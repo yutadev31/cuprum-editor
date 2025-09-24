@@ -1,4 +1,4 @@
-use utils::UVec2;
+use utils::vec2::UVec2;
 
 #[derive(Debug, Clone, Copy)]
 pub enum CursorPosition {

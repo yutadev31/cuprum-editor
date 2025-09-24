@@ -7,7 +7,7 @@ pub mod window;
 
 use std::{collections::HashMap, path::PathBuf};
 
-use utils::IVec2;
+use utils::vec2::IVec2;
 
 use crate::{buffer::Buffer, input::InputManager, render::Renderer, window::Window};
 

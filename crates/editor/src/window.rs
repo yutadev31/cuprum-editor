@@ -1,6 +1,6 @@
-use utils::{IVec2, UVec2};
+use utils::vec2::{IVec2, UVec2};
 
-use crate::{cursor::CursorPosition, BufferId};
+use crate::{BufferId, cursor::CursorPosition};
 
 #[derive(Debug)]
 pub struct Window {
