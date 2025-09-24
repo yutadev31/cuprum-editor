@@ -7,12 +7,9 @@ pub mod window;
 
 use std::{collections::HashMap, path::PathBuf};
 
-use crate::{
-    buffer::Buffer,
-    input::{Action, InputManager},
-    render::Renderer,
-    window::Window,
-};
+use utils::IVec2;
+
+use crate::{buffer::Buffer, input::InputManager, render::Renderer, window::Window};
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct BufferId(pub usize);
@@ -64,6 +61,10 @@ impl WindowManager {
     pub fn get_window(&self, id: WindowId) -> Option<&Window> {
         self.windows.get(&id)
     }
+
+    pub fn get_window_mut(&mut self, id: WindowId) -> Option<&mut Window> {
+        self.windows.get_mut(&id)
+    }
 }
 
 #[derive(Debug)]
@@ -99,7 +100,7 @@ impl Editor {
         })
     }
 
-    pub fn run(&self) -> anyhow::Result<()> {
+    pub fn run(&mut self) -> anyhow::Result<()> {
         self.renderer.init_screen()?;
         loop {
             self.renderer.render(
@@ -108,8 +109,21 @@ impl Editor {
                 self.active_window,
             )?;
 
-            if let Some(Action::Quit) = self.input_manager.read_event()? {
-                break;
+            let active_window = self.window_manager.get_window_mut(self.active_window);
+
+            if let Some(active_window) = active_window {
+                if let Some(action) = self.input_manager.read_event()? {
+                    match action.as_str() {
+                        "editor.quit" => {
+                            break;
+                        }
+                        "editor.cursor.left" => active_window.move_by(IVec2::left()),
+                        "editor.cursor.down" => active_window.move_by(IVec2::down()),
+                        "editor.cursor.up" => active_window.move_by(IVec2::up()),
+                        "editor.cursor.right" => active_window.move_by(IVec2::right()),
+                        _ => {}
+                    }
+                }
             }
         }
         self.renderer.clean_screen()?;

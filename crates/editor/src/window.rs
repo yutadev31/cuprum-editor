@@ -1,6 +1,6 @@
-use utils::UVec2;
+use utils::{IVec2, UVec2};
 
-use crate::{BufferId, cursor::CursorPosition};
+use crate::{cursor::CursorPosition, BufferId};
 
 #[derive(Debug)]
 pub struct Window {
@@ -28,5 +28,16 @@ impl Window {
 
     pub fn get_scroll(&self) -> UVec2 {
         self.scroll
+    }
+
+    pub fn move_by(&mut self, offset: IVec2) {
+        match self.cursor {
+            CursorPosition::Normal(pos) => {
+                if let Some(cursor) = pos.checked_add(offset) {
+                    self.cursor = CursorPosition::Normal(cursor);
+                }
+            }
+            _ => {}
+        }
     }
 }

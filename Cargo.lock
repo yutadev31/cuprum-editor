@@ -249,6 +249,7 @@ name = "editor"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "crossterm",
  "log",
  "utils",

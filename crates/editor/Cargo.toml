@@ -8,6 +8,7 @@ repository.workspace = true
 
 [dependencies]
 anyhow.workspace = true
+chrono.workspace = true
 crossterm.workspace = true
 utils.workspace = true
 log.workspace = true
