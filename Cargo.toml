@@ -1,5 +1,6 @@
 [workspace]
 resolver = "3"
+members = ["crates/editor", "crates/utils"]
 
 [workspace.package]
 version = "0.1.0"
@@ -11,6 +12,13 @@ repository = "https://github.com/yutadev31/cuprum-editor.git"
 [workspace.dependencies]
 anyhow = "1.0.99"
 clap = { version = "4.5.47", features = ["derive"] }
+chrono = "0.4.42"
+crossterm = "0.29.0"
+fern = "0.7.1"
+log = "0.4.28"
+
+editor.path = "crates/editor"
+utils.path = "crates/utils"
 
 [package]
 name = "cuprum"
@@ -23,3 +31,8 @@ repository.workspace = true
 [dependencies]
 anyhow.workspace = true
 clap.workspace = true
+chrono.workspace = true
+fern.workspace = true
+log.workspace = true
+
+editor.workspace = true
