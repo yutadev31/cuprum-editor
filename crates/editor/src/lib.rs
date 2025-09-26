@@ -35,6 +35,10 @@ impl BufferManager {
     pub fn get_buffer(&self, id: BufferId) -> Option<&Buffer> {
         self.buffers.get(&id)
     }
+
+    pub fn get_buffer_mut(&mut self, id: BufferId) -> Option<&mut Buffer> {
+        self.buffers.get_mut(&id)
+    }
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
@@ -121,6 +125,15 @@ impl Editor {
                         "editor.cursor.down" => active_window.move_by(IVec2::down()),
                         "editor.cursor.up" => active_window.move_by(IVec2::up()),
                         "editor.cursor.right" => active_window.move_by(IVec2::right()),
+                        "editor.file.save" => {
+                            if let Some(buf) =
+                                self.buffer_manager.get_buffer_mut(active_window.get_buf())
+                            {
+                                buf.save().ok();
+                            }
+                        }
+                        "editor.file.open" => {}
+                        "editor.ui.command" => {}
                         _ => {}
                     }
                 }
