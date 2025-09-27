@@ -119,8 +119,8 @@ pub struct InputManager {
 }
 
 impl InputManager {
-    fn read(&self) -> anyhow::Result<Option<KeyCode>> {
-        let evt = event::read()?;
+    /// CrosstermのキーイベントをアプリケーションのKeyCodeに変換する
+    fn crossterm_to_app_key(&self, evt: event::Event) -> anyhow::Result<Option<KeyCode>> {
         Ok(match evt {
             Event::Key(evt) => {
                 let ch = match evt.code {
@@ -153,8 +153,10 @@ impl InputManager {
     }
 
     pub fn read_event(&mut self) -> anyhow::Result<Option<String>> {
-        let key = self.read()?;
+        let crossterm_key = event::read()?; // 処理の前にキーを読む
+        let key = self.crossterm_to_app_key(crossterm_key)?;
 
+        // 500ms以上間隔が空いたらバッファをクリア
         let now = Local::now();
         if let Some(last_time) = self.last_time {
             let duration: Duration = now - last_time;
@@ -164,6 +166,7 @@ impl InputManager {
             }
         }
 
+        // キーが押されたらバッファに追加
         if let Some(code) = key {
             self.key_buffers.push(code);
             self.last_time = Some(now);
@@ -171,6 +174,7 @@ impl InputManager {
             return Ok(None);
         }
 
+        // バッファが登録されているアクションにマッチするか確認
         if let Some(action) = self.keymap.get(&self.key_buffers) {
             self.key_buffers = Vec::default();
             self.last_time = None;
