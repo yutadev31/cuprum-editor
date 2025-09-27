@@ -29,7 +29,6 @@ impl Buffer {
     pub fn save(&mut self) -> anyhow::Result<()> {
         let content = self.get_content();
         if let Some(file) = &mut self.file {
-            log::debug!("Saving file");
             file.write(content)?;
             self.dirty = false;
         }
@@ -127,7 +126,6 @@ impl Buffer {
     pub(crate) fn on_action(&mut self, action: BufferAction) -> anyhow::Result<()> {
         match action {
             BufferAction::Save => {
-                log::debug!("BufferAction::Save");
                 self.save()?;
             }
         }
