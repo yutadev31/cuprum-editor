@@ -1,4 +1,4 @@
-use std::io::{Write, stdout};
+use std::io::{stdout, Write};
 
 use crossterm::{
     cursor::{self, MoveTo},
@@ -7,7 +7,7 @@ use crossterm::{
     terminal::{self, disable_raw_mode, enable_raw_mode},
 };
 
-use crate::{BufferManager, WindowId, WindowManager, cursor::CursorPosition};
+use crate::{cursor::CursorPosition, BufferManager, WindowId, WindowManager};
 
 #[derive(Debug, Default)]
 pub struct Renderer {}
