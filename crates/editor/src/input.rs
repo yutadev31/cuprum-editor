@@ -91,10 +91,24 @@ impl Default for Keymap {
                 CursorAction::MoveToEndOfBuffer,
             ))),
         );
-        // s.reg(vec![KeyCode::Char('w')], "editor.cursor.next-word");
-        // s.reg(vec![KeyCode::Char('b')], "editor.cursor.prev-word");
-        // s.reg(vec![KeyCode::Char('W')], "editor.cursor.word-end");
-        // s.reg(vec![KeyCode::Char('B')], "editor.cursor.word-start");
+        // s.reg(
+        //     vec![KeyCode::Char('w')],
+        //     Action::Editor(EditorAction::Window(WindowAction::Cursor(
+        //         CursorAction::MoveToNextWord,
+        //     ))),
+        // );
+        // s.reg(
+        //     vec![KeyCode::Char('b')],
+        //     Action::Editor(EditorAction::Window(WindowAction::Cursor(
+        //         CursorAction::MoveToPrevWord,
+        //     ))),
+        // );
+        // s.reg(
+        //     vec![KeyCode::Char('e')],
+        //     Action::Editor(EditorAction::Window(WindowAction::Cursor(
+        //         CursorAction::MoveToWordEnd,
+        //     ))),
+        // );
 
         // Modes
         s.reg(

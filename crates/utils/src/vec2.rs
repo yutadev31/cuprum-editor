@@ -127,3 +127,20 @@ impl From<IVec2> for (isize, isize) {
         (val.x, val.y)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_vec2() {
+        let a = UVec2::new(1, 2);
+        let b = UVec2::new(3, 4);
+        let c = a + b;
+        assert_eq!(c, UVec2::new(4, 6));
+        assert_eq!(a < b, true);
+        assert_eq!(a <= b, true);
+        assert_eq!(a > b, false);
+        assert_eq!(a >= b, false);
+        assert_eq!(a == b, false);
+    }
+}

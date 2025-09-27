@@ -90,6 +90,60 @@ impl Window {
         self.sync_scroll(get_terminal_size().unwrap());
     }
 
+    pub fn move_to_y(&mut self, y: usize) {
+        if let Ok(buffer) = self.buffer.lock() {
+            let line_count = buffer.get_line_count();
+            if y >= line_count {
+                return;
+            }
+
+            self.cursor.y = y;
+
+            if let Some(line) = buffer.get_line(self.cursor.y as usize) {
+                if self.cursor.x > line.len() {
+                    self.cursor.x = line.len();
+                }
+            }
+        }
+        self.sync_scroll(get_terminal_size().unwrap());
+    }
+
+    pub fn move_to_line_start(&mut self) {
+        self.cursor.x = 0;
+        self.sync_scroll(get_terminal_size().unwrap());
+    }
+
+    pub fn move_to_line_end(&mut self) {
+        if let Ok(buffer) = self.buffer.lock() {
+            let line_count = buffer.get_line_count();
+            if self.cursor.y as usize >= line_count {
+                return;
+            }
+
+            if let Some(line) = buffer.get_line(self.cursor.y as usize) {
+                self.cursor.x = line.len();
+            }
+        }
+        self.sync_scroll(get_terminal_size().unwrap());
+    }
+
+    pub fn move_to_buffer_start(&mut self) {
+        self.cursor = UVec2::new(0, 0);
+        self.sync_scroll(get_terminal_size().unwrap());
+    }
+
+    pub fn move_to_buffer_end(&mut self) {
+        if let Ok(buffer) = self.buffer.lock() {
+            let line_count = buffer.get_line_count();
+            if line_count > 0 {
+                if let Some(line) = buffer.get_line(line_count - 1) {
+                    self.cursor = UVec2::new(line.len(), line_count - 1);
+                }
+            }
+        }
+        self.sync_scroll(get_terminal_size().unwrap());
+    }
+
     pub fn sync_scroll(&mut self, view_size: UVec2) {
         if self.cursor.y < self.scroll {
             self.scroll = self.cursor.y;
@@ -109,33 +163,10 @@ impl Window {
                 CursorAction::MoveDown => self.move_by(IVec2::down()),
                 CursorAction::MoveUp => self.move_by(IVec2::up()),
                 CursorAction::MoveRight => self.move_by(IVec2::right()),
-                CursorAction::MoveToStartOfLine => {
-                    self.cursor = UVec2::new(0, self.cursor.y);
-                    self.sync_scroll(get_terminal_size().unwrap());
-                }
-                CursorAction::MoveToEndOfLine => {
-                    if let Ok(buffer) = self.buffer.lock() {
-                        if let Some(line) = buffer.get_line(self.cursor.y as usize) {
-                            self.cursor = UVec2::new(line.len(), self.cursor.y);
-                        }
-                    }
-                    self.sync_scroll(get_terminal_size().unwrap());
-                }
-                CursorAction::MoveToStartOfBuffer => {
-                    self.cursor = UVec2::new(0, 0);
-                    self.sync_scroll(get_terminal_size().unwrap());
-                }
-                CursorAction::MoveToEndOfBuffer => {
-                    if let Ok(buffer) = self.buffer.lock() {
-                        let line_count = buffer.get_line_count();
-                        if line_count > 0 {
-                            if let Some(line) = buffer.get_line(line_count - 1) {
-                                self.cursor = UVec2::new(line.len(), line_count - 1);
-                            }
-                        }
-                    }
-                    self.sync_scroll(get_terminal_size().unwrap());
-                }
+                CursorAction::MoveToStartOfLine => self.move_to_line_start(),
+                CursorAction::MoveToEndOfLine => self.move_to_line_end(),
+                CursorAction::MoveToStartOfBuffer => self.move_to_buffer_start(),
+                CursorAction::MoveToEndOfBuffer => self.move_to_buffer_end(),
             },
         }
     }
