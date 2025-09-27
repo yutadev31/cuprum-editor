@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::file::EditorFile;
+use crate::{action::BufferAction, file::EditorFile};
 
 #[derive(Debug, Default)]
 pub struct Buffer {
@@ -20,6 +20,7 @@ impl Buffer {
             .collect();
 
         Ok(Self {
+            file: Some(file),
             content,
             ..Default::default()
         })
@@ -28,6 +29,7 @@ impl Buffer {
     pub fn save(&mut self) -> anyhow::Result<()> {
         let content = self.get_content();
         if let Some(file) = &mut self.file {
+            log::debug!("Saving file");
             file.write(content)?;
             self.dirty = false;
         }
@@ -56,6 +58,27 @@ impl Buffer {
 
     pub fn get_line(&self, y: usize) -> Option<String> {
         self.content.get(y).map(|line| line.clone())
+    }
+
+    pub fn get_char(&self, x: usize, y: usize) -> Option<char> {
+        self.content.get(y).and_then(|line| line.chars().nth(x))
+    }
+
+    pub fn insert_char(&mut self, x: usize, y: usize, ch: char) {
+        self.mark_dirty();
+        if let Some(line) = self.content.get_mut(y) {
+            line.insert(x, ch);
+        }
+    }
+
+    pub fn remove_char(&mut self, x: usize, y: usize) -> Option<char> {
+        self.mark_dirty();
+        if let Some(line) = self.content.get_mut(y) {
+            if x < line.len() {
+                return Some(line.remove(x));
+            }
+        }
+        None
     }
 
     pub fn insert_line(&mut self, y: usize, content: String) {
@@ -99,6 +122,16 @@ impl Buffer {
             self.content[y] = combined;
             self.content.remove(y + 1);
         }
+    }
+
+    pub(crate) fn on_action(&mut self, action: BufferAction) -> anyhow::Result<()> {
+        match action {
+            BufferAction::Save => {
+                log::debug!("BufferAction::Save");
+                self.save()?;
+            }
+        }
+        Ok(())
     }
 }
 

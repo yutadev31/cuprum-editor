@@ -1,4 +1,7 @@
-use std::io::{stdout, Write};
+use std::{
+    io::{Write, stdout},
+    sync::{Arc, Mutex},
+};
 
 use crossterm::{
     cursor::{self, MoveTo},
@@ -6,8 +9,9 @@ use crossterm::{
     style::Print,
     terminal::{self, disable_raw_mode, enable_raw_mode},
 };
+use utils::vec2::UVec2;
 
-use crate::{cursor::CursorPosition, BufferManager, WindowId, WindowManager};
+use crate::{buffer::Buffer, window::Window};
 
 #[derive(Debug, Default)]
 pub struct Renderer {}
@@ -31,10 +35,11 @@ impl Renderer {
 
     pub fn render(
         &self,
-        buffers: &BufferManager,
-        windows: &WindowManager,
-        active_window: WindowId,
+        active_window: Arc<Mutex<Window>>,
+        active_buffer: Arc<Mutex<Buffer>>,
     ) -> anyhow::Result<()> {
+        let win = active_window.lock().unwrap();
+
         let (_w, h) = terminal::size()?;
 
         queue!(
@@ -43,30 +48,22 @@ impl Renderer {
             cursor::MoveTo(0, 0)
         )?;
 
-        let active_window = windows.get_window(active_window);
-        if let Some(win) = active_window {
-            let scroll = win.get_scroll();
-            let pos = win.get_cursor();
-            let id = win.get_buf();
-            let active_buf = buffers.get_buffer(id);
-            if let Some(buf) = active_buf {
-                for (y, line) in buf
-                    .get_lines()
-                    .iter()
-                    .skip(scroll.y)
-                    .take(h as usize)
-                    .enumerate()
-                {
-                    queue!(stdout(), MoveTo(0, y as u16), Print(line))?;
-                }
-            }
-            match pos {
-                CursorPosition::Normal(pos) => {
-                    queue!(stdout(), cursor::MoveTo(pos.x as u16, pos.y as u16))?;
-                }
-                _ => {}
-            }
+        let pos = win.get_render_cursor();
+        let scroll = win.get_scroll();
+
+        let buf = active_buffer.lock().unwrap();
+        for (y, line) in buf
+            .get_lines()
+            .iter()
+            .skip(scroll)
+            .take(h as usize)
+            .enumerate()
+        {
+            queue!(stdout(), MoveTo(0, y as u16), Print(line))?;
         }
+
+        let pos = UVec2::new(pos.x, pos.y.saturating_sub(scroll));
+        queue!(stdout(), cursor::MoveTo(pos.x as u16, pos.y as u16))?;
 
         stdout().flush()?;
 

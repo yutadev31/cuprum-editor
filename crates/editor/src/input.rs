@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use chrono::{DateTime, Duration, Local};
 use crossterm::event::{self, Event, KeyModifiers};
 
+use crate::action::{Action, BufferAction, CursorAction, EditorAction, Mode, WindowAction};
+
 #[derive(Debug, Hash, PartialEq, Eq)]
 pub enum KeyCode {
     Char(char),
@@ -20,16 +22,16 @@ type Key = Vec<KeyCode>;
 
 #[derive(Debug)]
 pub struct Keymap {
-    map: HashMap<Key, String>,
+    map: HashMap<Key, Action>,
 }
 
 impl Keymap {
     /// Register a key sequence to an action
-    pub fn reg(&mut self, key: Key, action: &str) {
-        self.map.insert(key, action.to_string());
+    pub fn reg(&mut self, key: Key, action: Action) {
+        self.map.insert(key, action);
     }
 
-    pub fn get(&self, key: &Key) -> Option<&String> {
+    pub fn get(&self, key: &Key) -> Option<&Action> {
         self.map.get(key)
     }
 }
@@ -41,70 +43,108 @@ impl Default for Keymap {
         };
 
         // Cursor movement
-        s.reg(vec![KeyCode::Char('h')], "editor.cursor.left");
-        s.reg(vec![KeyCode::Char('j')], "editor.cursor.down");
-        s.reg(vec![KeyCode::Char('k')], "editor.cursor.up");
-        s.reg(vec![KeyCode::Char('l')], "editor.cursor.right");
-        s.reg(vec![KeyCode::Char('0')], "editor.cursor.line-start");
-        s.reg(vec![KeyCode::Char('$')], "editor.cursor.line-end");
+        s.reg(
+            vec![KeyCode::Char('h')],
+            Action::Editor(EditorAction::Window(WindowAction::Cursor(
+                CursorAction::MoveLeft,
+            ))),
+        );
+        s.reg(
+            vec![KeyCode::Char('j')],
+            Action::Editor(EditorAction::Window(WindowAction::Cursor(
+                CursorAction::MoveDown,
+            ))),
+        );
+        s.reg(
+            vec![KeyCode::Char('k')],
+            Action::Editor(EditorAction::Window(WindowAction::Cursor(
+                CursorAction::MoveUp,
+            ))),
+        );
+        s.reg(
+            vec![KeyCode::Char('l')],
+            Action::Editor(EditorAction::Window(WindowAction::Cursor(
+                CursorAction::MoveRight,
+            ))),
+        );
+        s.reg(
+            vec![KeyCode::Char('0')],
+            Action::Editor(EditorAction::Window(WindowAction::Cursor(
+                CursorAction::MoveToStartOfLine,
+            ))),
+        );
+        s.reg(
+            vec![KeyCode::Char('$')],
+            Action::Editor(EditorAction::Window(WindowAction::Cursor(
+                CursorAction::MoveToEndOfLine,
+            ))),
+        );
         s.reg(
             vec![KeyCode::Char('g'), KeyCode::Char('g')],
-            "editor.cursor.file-start",
+            Action::Editor(EditorAction::Window(WindowAction::Cursor(
+                CursorAction::MoveToStartOfBuffer,
+            ))),
         );
-        s.reg(vec![KeyCode::Char('G')], "editor.cursor.file-end");
-        s.reg(vec![KeyCode::Char('w')], "editor.cursor.next-word");
-        s.reg(vec![KeyCode::Char('b')], "editor.cursor.prev-word");
-        s.reg(vec![KeyCode::Char('W')], "editor.cursor.word-end");
-        s.reg(vec![KeyCode::Char('B')], "editor.cursor.word-start");
+        s.reg(
+            vec![KeyCode::Char('G')],
+            Action::Editor(EditorAction::Window(WindowAction::Cursor(
+                CursorAction::MoveToEndOfBuffer,
+            ))),
+        );
+        // s.reg(vec![KeyCode::Char('w')], "editor.cursor.next-word");
+        // s.reg(vec![KeyCode::Char('b')], "editor.cursor.prev-word");
+        // s.reg(vec![KeyCode::Char('W')], "editor.cursor.word-end");
+        // s.reg(vec![KeyCode::Char('B')], "editor.cursor.word-start");
 
         // Modes
-        s.reg(vec![KeyCode::Char('i')], "editor.mode.insert");
-        s.reg(vec![KeyCode::Char('a')], "editor.mode.append");
-        s.reg(vec![KeyCode::Char('I')], "editor.mode.insert-line-start");
-        s.reg(vec![KeyCode::Char('A')], "editor.mode.append-line-end");
-        s.reg(vec![KeyCode::Char('o')], "editor.mode.open-line-below");
-        s.reg(vec![KeyCode::Char('O')], "editor.mode.open-line-above");
-        s.reg(vec![KeyCode::Esc], "editor.mode.normal");
+        s.reg(
+            vec![KeyCode::Char('i')],
+            Action::Editor(EditorAction::Mode(Mode::Insert)),
+        );
+        // s.reg(vec![KeyCode::Char('a')], "editor.mode.append");
+        // s.reg(vec![KeyCode::Char('I')], "editor.mode.insert-line-start");
+        // s.reg(vec![KeyCode::Char('A')], "editor.mode.append-line-end");
+        // s.reg(vec![KeyCode::Char('o')], "editor.mode.open-line-below");
+        // s.reg(vec![KeyCode::Char('O')], "editor.mode.open-line-above");
 
         // Editing
-        s.reg(vec![KeyCode::Char('x')], "editor.edit.delete-char");
-        s.reg(vec![KeyCode::Char('X')], "editor.edit.delete-back-char");
-        s.reg(
-            vec![KeyCode::Char('d'), KeyCode::Char('d')],
-            "editor.edit.delete-line",
-        );
-        s.reg(vec![KeyCode::Char('D')], "editor.edit.delete-to-line-end");
-        s.reg(
-            vec![KeyCode::Char('r'), KeyCode::Char('r')],
-            "editor.edit.replace-char",
-        );
-        s.reg(vec![KeyCode::Char('R')], "editor.edit.replace-mode");
-        s.reg(vec![KeyCode::Char('p')], "editor.edit.paste-after");
-        s.reg(vec![KeyCode::Char('P')], "editor.edit.paste-before");
-        s.reg(
-            vec![KeyCode::Char('y'), KeyCode::Char('y')],
-            "editor.edit.yank-line",
-        );
-        s.reg(vec![KeyCode::Char('Y')], "editor.edit.yank-to-line-end");
+        // s.reg(vec![KeyCode::Char('x')], "editor.edit.delete-char");
+        // s.reg(vec![KeyCode::Char('X')], "editor.edit.delete-back-char");
+        // s.reg(
+        //     vec![KeyCode::Char('d'), KeyCode::Char('d')],
+        //     "editor.edit.delete-line",
+        // );
+        // s.reg(vec![KeyCode::Char('D')], "editor.edit.delete-to-line-end");
+        // s.reg(
+        //     vec![KeyCode::Char('r'), KeyCode::Char('r')],
+        //     "editor.edit.replace-char",
+        // );
+        // s.reg(vec![KeyCode::Char('R')], "editor.edit.replace-mode");
+        // s.reg(vec![KeyCode::Char('p')], "editor.edit.paste-after");
+        // s.reg(vec![KeyCode::Char('P')], "editor.edit.paste-before");
+        // s.reg(
+        //     vec![KeyCode::Char('y'), KeyCode::Char('y')],
+        //     "editor.edit.yank-line",
+        // );
+        // s.reg(vec![KeyCode::Char('Y')], "editor.edit.yank-to-line-end");
 
         // Undo/Redo
-        s.reg(vec![KeyCode::Char('u')], "editor.edit.undo");
-        s.reg(vec![KeyCode::Ctrl('r')], "editor.edit.redo");
+        // s.reg(vec![KeyCode::Char('u')], "editor.edit.undo");
+        // s.reg(vec![KeyCode::Ctrl('r')], "editor.edit.redo");
 
         // UI
-        s.reg(vec![KeyCode::Char(':')], "editor.ui.command");
-        s.reg(vec![KeyCode::Char('/')], "editor.ui.search");
-        s.reg(vec![KeyCode::Char('%')], "editor.ui.replace");
+        // s.reg(vec![KeyCode::Char(':')], "editor.ui.command");
+        // s.reg(vec![KeyCode::Char('/')], "editor.ui.search");
+        // s.reg(vec![KeyCode::Char('%')], "editor.ui.replace");
 
         // Leader key
-        s.reg(vec![KeyCode::Char(' '), KeyCode::Char('q')], "editor.quit");
         s.reg(
-            vec![KeyCode::Char(' '), KeyCode::Char('w')],
-            "editor.file.save",
+            vec![KeyCode::Char(' '), KeyCode::Char('q')],
+            Action::Editor(EditorAction::Quit),
         );
         s.reg(
-            vec![KeyCode::Char(' '), KeyCode::Char('o')],
-            "editor.file.open",
+            vec![KeyCode::Char(' '), KeyCode::Char('w')],
+            Action::Editor(EditorAction::Buffer(BufferAction::Save)),
         );
 
         s
@@ -120,7 +160,7 @@ pub struct InputManager {
 
 impl InputManager {
     /// CrosstermのキーイベントをアプリケーションのKeyCodeに変換する
-    fn crossterm_to_app_key(&self, evt: event::Event) -> anyhow::Result<Option<KeyCode>> {
+    pub fn crossterm_to_app_key(&self, evt: event::Event) -> anyhow::Result<Option<KeyCode>> {
         Ok(match evt {
             Event::Key(evt) => {
                 let ch = match evt.code {
@@ -152,7 +192,7 @@ impl InputManager {
         })
     }
 
-    pub fn read_event(&mut self) -> anyhow::Result<Option<String>> {
+    pub fn read_event(&mut self) -> anyhow::Result<Option<Action>> {
         let crossterm_key = event::read()?; // 処理の前にキーを読む
         let key = self.crossterm_to_app_key(crossterm_key)?;
 
@@ -178,9 +218,16 @@ impl InputManager {
         if let Some(action) = self.keymap.get(&self.key_buffers) {
             self.key_buffers = Vec::default();
             self.last_time = None;
-            Ok(Some(action.to_string()))
+            Ok(Some(action.clone()))
         } else {
             Ok(None)
         }
+    }
+
+    pub fn read_event_insert(&mut self) -> anyhow::Result<Option<KeyCode>> {
+        let crossterm_key = event::read()?; // 処理の前にキーを読む
+        let key = self.crossterm_to_app_key(crossterm_key)?;
+
+        Ok(key)
     }
 }
