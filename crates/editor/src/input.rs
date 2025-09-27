@@ -153,6 +153,8 @@ impl InputManager {
     }
 
     pub fn read_event(&mut self) -> anyhow::Result<Option<String>> {
+        let key = self.read()?;
+
         let now = Local::now();
         if let Some(last_time) = self.last_time {
             let duration: Duration = now - last_time;
@@ -162,7 +164,7 @@ impl InputManager {
             }
         }
 
-        if let Some(code) = self.read()? {
+        if let Some(code) = key {
             self.key_buffers.push(code);
             self.last_time = Some(now);
         } else {
