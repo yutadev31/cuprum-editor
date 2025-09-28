@@ -1,8 +1,6 @@
 pub mod action;
 pub mod buffer;
-pub mod file;
-pub mod input;
-pub mod render;
+mod ui;
 pub mod window;
 
 use std::{
@@ -16,8 +14,10 @@ use utils::vec2::IVec2;
 use crate::{
     action::{Action, EditorAction, Mode},
     buffer::Buffer,
-    input::InputManager,
-    render::Renderer,
+    ui::{
+        input::{InputManager, KeyCode},
+        render::Renderer,
+    },
     window::Window,
 };
 
@@ -152,7 +152,7 @@ impl Editor {
                 let mut active_window = active_window.lock().unwrap();
                 let cursor = active_window.get_render_cursor();
                 match key_code {
-                    input::KeyCode::Char(ch) => {
+                    KeyCode::Char(ch) => {
                         {
                             let active_buffer = active_window.get_buffer();
                             let mut active_buffer = active_buffer.lock().unwrap();
@@ -171,7 +171,7 @@ impl Editor {
                             active_window.move_by(IVec2::right());
                         }
                     }
-                    input::KeyCode::Backspace => {
+                    KeyCode::Backspace => {
                         if cursor.x == 0 && cursor.y == 0 {
                             return Ok(false);
                         }
@@ -197,12 +197,12 @@ impl Editor {
                             active_window.move_by(IVec2::left());
                         }
                     }
-                    input::KeyCode::Delete => {
+                    KeyCode::Delete => {
                         let active_buffer = active_window.get_buffer();
                         let mut active_buffer = active_buffer.lock().unwrap();
                         active_buffer.remove_char(cursor.x, cursor.y);
                     }
-                    input::KeyCode::Esc => {
+                    KeyCode::Esc => {
                         self.mode = Mode::Normal;
                     }
                     _ => {}
