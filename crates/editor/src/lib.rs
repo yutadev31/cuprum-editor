@@ -114,104 +114,110 @@ impl Editor {
         self.window_manager.get_window(self.active_window)
     }
 
-    fn process(&mut self) -> anyhow::Result<bool> {
-        match self.mode {
-            Mode::Normal => {
-                let evt = self.input_manager.read_event()?;
+    fn process_normal(&mut self) -> anyhow::Result<bool> {
+        let evt = self.input_manager.read_event_normal()?;
 
-                let active_window = self.get_active_window();
+        let active_window = self.get_active_window();
 
-                if let Some(active_window) = active_window {
-                    let mut active_window = active_window.lock().unwrap();
-                    if let Some(action) = evt {
-                        match action {
-                            Action::Editor(action) => match action {
-                                EditorAction::Quit => return Ok(true),
-                                EditorAction::Mode(mode) => {
-                                    self.mode = mode;
-                                }
-                                EditorAction::Buffer(action) => {
-                                    let active_buffer = active_window.get_buffer();
-                                    let mut active_buffer = active_buffer.lock().unwrap();
-                                    active_buffer.on_action(action)?;
-                                }
-                                EditorAction::Window(action) => {
-                                    active_window.on_action(action);
-                                }
-                            },
+        if let Some(active_window) = active_window {
+            let mut active_window = active_window.lock().unwrap();
+            if let Some(action) = evt {
+                match action {
+                    Action::Editor(action) => match action {
+                        EditorAction::Quit => return Ok(true),
+                        EditorAction::Mode(mode) => {
+                            self.mode = mode;
                         }
-                    }
-                }
-            }
-            Mode::Insert => {
-                if let Some(key_code) = self.input_manager.read_event_insert()? {
-                    let active_window = self.get_active_window();
-
-                    if let Some(active_window) = active_window {
-                        let mut active_window = active_window.lock().unwrap();
-                        let cursor = active_window.get_render_cursor();
-                        match key_code {
-                            input::KeyCode::Char(ch) => {
-                                {
-                                    let active_buffer = active_window.get_buffer();
-                                    let mut active_buffer = active_buffer.lock().unwrap();
-
-                                    if ch == '\n' {
-                                        active_buffer.split_line(cursor.x, cursor.y);
-                                    } else {
-                                        active_buffer.insert_char(cursor.x, cursor.y, ch);
-                                    }
-                                }
-
-                                if ch == '\n' {
-                                    active_window.move_by(IVec2::new(0, 1));
-                                    active_window.move_to_x(0);
-                                } else {
-                                    active_window.move_by(IVec2::right());
-                                }
-                            }
-                            input::KeyCode::Backspace => {
-                                if cursor.x == 0 && cursor.y == 0 {
-                                    return Ok(false);
-                                }
-
-                                let line_len = {
-                                    let active_buffer = active_window.get_buffer();
-                                    let mut active_buffer = active_buffer.lock().unwrap();
-
-                                    let line_len =
-                                        active_buffer.get_line_length(cursor.y - 1).unwrap();
-                                    if cursor.x == 0 {
-                                        active_buffer.join_lines(cursor.y - 1);
-                                    } else {
-                                        active_buffer.remove_char(cursor.x - 1, cursor.y);
-                                    }
-                                    line_len
-                                };
-
-                                if cursor.x == 0 {
-                                    // 行頭に戻る
-                                    active_window.move_by(IVec2::new(0, -1));
-                                    active_window.move_to_x(line_len);
-                                } else {
-                                    active_window.move_by(IVec2::left());
-                                }
-                            }
-                            input::KeyCode::Delete => {
-                                let active_buffer = active_window.get_buffer();
-                                let mut active_buffer = active_buffer.lock().unwrap();
-                                active_buffer.remove_char(cursor.x, cursor.y);
-                            }
-                            input::KeyCode::Esc => {
-                                self.mode = Mode::Normal;
-                            }
-                            _ => {}
+                        EditorAction::Buffer(action) => {
+                            let active_buffer = active_window.get_buffer();
+                            let mut active_buffer = active_buffer.lock().unwrap();
+                            active_buffer.on_action(action)?;
                         }
-                    }
+                        EditorAction::Window(action) => {
+                            active_window.on_action(action);
+                        }
+                    },
                 }
             }
         }
+
         Ok(false)
+    }
+
+    fn process_insert(&mut self) -> anyhow::Result<bool> {
+        if let Some(key_code) = self.input_manager.read_event_insert()? {
+            let active_window = self.get_active_window();
+
+            if let Some(active_window) = active_window {
+                let mut active_window = active_window.lock().unwrap();
+                let cursor = active_window.get_render_cursor();
+                match key_code {
+                    input::KeyCode::Char(ch) => {
+                        {
+                            let active_buffer = active_window.get_buffer();
+                            let mut active_buffer = active_buffer.lock().unwrap();
+
+                            if ch == '\n' {
+                                active_buffer.split_line(cursor.x, cursor.y);
+                            } else {
+                                active_buffer.insert_char(cursor.x, cursor.y, ch);
+                            }
+                        }
+
+                        if ch == '\n' {
+                            active_window.move_by(IVec2::new(0, 1));
+                            active_window.move_to_x(0);
+                        } else {
+                            active_window.move_by(IVec2::right());
+                        }
+                    }
+                    input::KeyCode::Backspace => {
+                        if cursor.x == 0 && cursor.y == 0 {
+                            return Ok(false);
+                        }
+
+                        let line_len = {
+                            let active_buffer = active_window.get_buffer();
+                            let mut active_buffer = active_buffer.lock().unwrap();
+
+                            let line_len = active_buffer.get_line_length(cursor.y - 1).unwrap();
+                            if cursor.x == 0 {
+                                active_buffer.join_lines(cursor.y - 1);
+                            } else {
+                                active_buffer.remove_char(cursor.x - 1, cursor.y);
+                            }
+                            line_len
+                        };
+
+                        if cursor.x == 0 {
+                            // 行頭に戻る
+                            active_window.move_by(IVec2::new(0, -1));
+                            active_window.move_to_x(line_len);
+                        } else {
+                            active_window.move_by(IVec2::left());
+                        }
+                    }
+                    input::KeyCode::Delete => {
+                        let active_buffer = active_window.get_buffer();
+                        let mut active_buffer = active_buffer.lock().unwrap();
+                        active_buffer.remove_char(cursor.x, cursor.y);
+                    }
+                    input::KeyCode::Esc => {
+                        self.mode = Mode::Normal;
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        Ok(false)
+    }
+
+    fn process(&mut self) -> anyhow::Result<bool> {
+        match self.mode {
+            Mode::Normal => self.process_normal(),
+            Mode::Insert => self.process_insert(),
+        }
     }
 
     pub fn run(&mut self) -> anyhow::Result<()> {
