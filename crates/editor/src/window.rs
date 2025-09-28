@@ -42,16 +42,16 @@ impl Window {
     }
 
     pub(crate) fn get_render_cursor(&self) -> UVec2 {
-        if let Ok(buffer) = self.buffer.lock() {
-            if let Some(line) = buffer.get_line(self.cursor.y as usize) {
-                if self.cursor.x > line.len() {
-                    return UVec2::new(line.len(), self.cursor.y);
-                } else {
-                    return self.cursor;
-                }
+        if let Ok(buffer) = self.buffer.lock()
+            && let Some(line) = buffer.get_line(self.cursor.y)
+        {
+            if self.cursor.x > line.len() {
+                return UVec2::new(line.len(), self.cursor.y);
+            } else {
+                return self.cursor;
             }
         }
-        return self.cursor;
+        self.cursor
     }
 
     pub fn get_scroll(&self) -> usize {
@@ -75,11 +75,11 @@ impl Window {
     pub fn move_to_x(&mut self, x: usize) {
         if let Ok(buffer) = self.buffer.lock() {
             let line_count = buffer.get_line_count();
-            if self.cursor.y as usize >= line_count {
+            if self.cursor.y >= line_count {
                 return;
             }
 
-            if let Some(line) = buffer.get_line(self.cursor.y as usize) {
+            if let Some(line) = buffer.get_line(self.cursor.y) {
                 if x > line.len() {
                     self.cursor.x = line.len();
                 } else {
@@ -99,10 +99,10 @@ impl Window {
 
             self.cursor.y = y;
 
-            if let Some(line) = buffer.get_line(self.cursor.y as usize) {
-                if self.cursor.x > line.len() {
-                    self.cursor.x = line.len();
-                }
+            if let Some(line) = buffer.get_line(self.cursor.y)
+                && self.cursor.x > line.len()
+            {
+                self.cursor.x = line.len();
             }
         }
         self.sync_scroll(get_terminal_size().unwrap());
@@ -116,11 +116,11 @@ impl Window {
     pub fn move_to_line_end(&mut self) {
         if let Ok(buffer) = self.buffer.lock() {
             let line_count = buffer.get_line_count();
-            if self.cursor.y as usize >= line_count {
+            if self.cursor.y >= line_count {
                 return;
             }
 
-            if let Some(line) = buffer.get_line(self.cursor.y as usize) {
+            if let Some(line) = buffer.get_line(self.cursor.y) {
                 self.cursor.x = line.len();
             }
         }
@@ -135,10 +135,10 @@ impl Window {
     pub fn move_to_buffer_end(&mut self) {
         if let Ok(buffer) = self.buffer.lock() {
             let line_count = buffer.get_line_count();
-            if line_count > 0 {
-                if let Some(line) = buffer.get_line(line_count - 1) {
-                    self.cursor = UVec2::new(line.len(), line_count - 1);
-                }
+            if line_count > 0
+                && let Some(line) = buffer.get_line(line_count - 1)
+            {
+                self.cursor = UVec2::new(line.len(), line_count - 1);
             }
         }
         self.sync_scroll(get_terminal_size().unwrap());

@@ -56,7 +56,7 @@ impl Buffer {
     }
 
     pub fn get_line(&self, y: usize) -> Option<String> {
-        self.content.get(y).map(|line| line.clone())
+        self.content.get(y).cloned()
     }
 
     pub fn get_char(&self, x: usize, y: usize) -> Option<char> {
@@ -72,12 +72,13 @@ impl Buffer {
 
     pub fn remove_char(&mut self, x: usize, y: usize) -> Option<char> {
         self.mark_dirty();
-        if let Some(line) = self.content.get_mut(y) {
-            if x < line.len() {
-                return Some(line.remove(x));
-            }
+        if let Some(line) = self.content.get_mut(y)
+            && x < line.len()
+        {
+            Some(line.remove(x))
+        } else {
+            None
         }
-        None
     }
 
     pub fn insert_line(&mut self, y: usize, content: String) {
