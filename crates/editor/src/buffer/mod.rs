@@ -1,6 +1,8 @@
+mod file;
+
 use std::path::PathBuf;
 
-use crate::{action::BufferAction, file::EditorFile};
+use crate::{action::BufferAction, buffer::file::EditorFile};
 
 #[derive(Debug, Default)]
 pub struct Buffer {
