@@ -206,7 +206,7 @@ impl InputManager {
         })
     }
 
-    pub fn read_event(&mut self) -> anyhow::Result<Option<Action>> {
+    pub fn read_event_normal(&mut self) -> anyhow::Result<Option<Action>> {
         let crossterm_key = event::read()?; // 処理の前にキーを読む
         let key = self.crossterm_to_app_key(crossterm_key)?;
 
