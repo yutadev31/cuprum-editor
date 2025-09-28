@@ -29,7 +29,6 @@ impl Buffer {
     pub fn save(&mut self) -> anyhow::Result<()> {
         let content = self.get_content();
         if let Some(file) = &mut self.file {
-            log::debug!("Saving file");
             file.write(content)?;
             self.dirty = false;
         }
@@ -57,7 +56,7 @@ impl Buffer {
     }
 
     pub fn get_line(&self, y: usize) -> Option<String> {
-        self.content.get(y).map(|line| line.clone())
+        self.content.get(y).cloned()
     }
 
     pub fn get_char(&self, x: usize, y: usize) -> Option<char> {
@@ -73,12 +72,13 @@ impl Buffer {
 
     pub fn remove_char(&mut self, x: usize, y: usize) -> Option<char> {
         self.mark_dirty();
-        if let Some(line) = self.content.get_mut(y) {
-            if x < line.len() {
-                return Some(line.remove(x));
-            }
+        if let Some(line) = self.content.get_mut(y)
+            && x < line.len()
+        {
+            Some(line.remove(x))
+        } else {
+            None
         }
-        None
     }
 
     pub fn insert_line(&mut self, y: usize, content: String) {
@@ -127,7 +127,6 @@ impl Buffer {
     pub(crate) fn on_action(&mut self, action: BufferAction) -> anyhow::Result<()> {
         match action {
             BufferAction::Save => {
-                log::debug!("BufferAction::Save");
                 self.save()?;
             }
         }
@@ -140,13 +139,53 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_buf() {
+    fn test_insert_remove_char() {
+        let mut buf = Buffer::default();
+        buf.insert_line(0, "Hello".to_string());
+        buf.insert_line(1, "World".to_string());
+
+        assert_eq!(buf.get_char(0, 0), Some('H'));
+        assert_eq!(buf.get_char(4, 0), Some('o'));
+        assert_eq!(buf.get_char(0, 1), Some('W'));
+        assert_eq!(buf.get_char(4, 1), Some('d'));
+        assert_eq!(buf.get_char(5, 1), None);
+
+        assert_eq!(buf.remove_char(1, 0), Some('e'));
+        assert_eq!(buf.get_line(0), Some("Hllo".to_string()));
+        assert_eq!(buf.remove_char(10, 0), None);
+    }
+
+    #[test]
+    fn test_insert_remove_line() {
         let mut buf = Buffer::default();
         assert_eq!(buf.remove_line(0), None);
         assert_eq!(buf.remove_line(1), None);
 
-        buf.content.insert(0, "test line".to_string());
-        assert_eq!(buf.remove_line(0), Some("test line".to_string()));
+        buf.insert_line(0, "first line".to_string());
+        buf.insert_line(1, "second line".to_string());
+
+        assert_eq!(buf.get_line_count(), 2);
+        assert_eq!(buf.get_line(0), Some("first line".to_string()));
+        assert_eq!(buf.get_line(1), Some("second line".to_string()));
+
+        assert_eq!(buf.remove_line(0), Some("first line".to_string()));
+        assert_eq!(buf.remove_line(0), Some("second line".to_string()));
         assert_eq!(buf.remove_line(0), None);
+        assert_eq!(buf.get_line_count(), 0);
+    }
+
+    #[test]
+    fn test_split_join_line() {
+        let mut buf = Buffer::default();
+        buf.insert_line(0, "HelloWorld".to_string());
+
+        buf.split_line(5, 0);
+        assert_eq!(buf.get_line_count(), 2);
+        assert_eq!(buf.get_line(0), Some("Hello".to_string()));
+        assert_eq!(buf.get_line(1), Some("World".to_string()));
+
+        buf.join_lines(0);
+        assert_eq!(buf.get_line_count(), 1);
+        assert_eq!(buf.get_line(0), Some("HelloWorld".to_string()));
     }
 }

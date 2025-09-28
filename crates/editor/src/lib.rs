@@ -44,7 +44,7 @@ impl BufferManager {
     }
 
     pub fn get_buffer(&self, id: BufferId) -> Option<Arc<Mutex<Buffer>>> {
-        self.buffers.get(&id).map(|buf| buf.clone())
+        self.buffers.get(&id).cloned()
     }
 }
 
@@ -71,13 +71,13 @@ impl WindowManager {
     }
 
     pub fn get_window(&self, id: WindowId) -> Option<Arc<Mutex<Window>>> {
-        self.windows.get(&id).map(|win| win.clone())
+        self.windows.get(&id).cloned()
     }
 }
 
 #[derive(Debug)]
 pub struct Editor {
-    buffer_manager: BufferManager,
+    _buffer_manager: BufferManager,
     window_manager: WindowManager,
     active_window: WindowId,
     renderer: Renderer,
@@ -101,7 +101,7 @@ impl Editor {
         }
 
         Ok(Self {
-            buffer_manager,
+            _buffer_manager: buffer_manager,
             window_manager,
             active_window: WindowId(0),
             renderer: Renderer::default(),
