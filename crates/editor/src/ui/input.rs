@@ -115,6 +115,10 @@ impl Default for Keymap {
             vec![KeyCode::Char('i')],
             Action::Editor(EditorAction::Mode(Mode::Insert)),
         );
+        s.reg(
+            vec![KeyCode::Char(':')],
+            Action::Editor(EditorAction::Mode(Mode::Command)),
+        );
         // s.reg(vec![KeyCode::Char('a')], "editor.mode.append");
         // s.reg(vec![KeyCode::Char('I')], "editor.mode.insert-line-start");
         // s.reg(vec![KeyCode::Char('A')], "editor.mode.append-line-end");
@@ -152,10 +156,6 @@ impl Default for Keymap {
         // s.reg(vec![KeyCode::Char('%')], "editor.ui.replace");
 
         // Leader key
-        s.reg(
-            vec![KeyCode::Char(' '), KeyCode::Char('q')],
-            Action::Editor(EditorAction::Quit),
-        );
         s.reg(
             vec![KeyCode::Char(' '), KeyCode::Char('w')],
             Action::Editor(EditorAction::Buffer(BufferAction::Save)),
@@ -238,7 +238,7 @@ impl InputManager {
         }
     }
 
-    pub fn read_event_insert(&mut self) -> anyhow::Result<Option<KeyCode>> {
+    pub fn read_event_raw(&mut self) -> anyhow::Result<Option<KeyCode>> {
         let crossterm_key = event::read()?; // 処理の前にキーを読む
         let key = self.crossterm_to_app_key(crossterm_key)?;
 

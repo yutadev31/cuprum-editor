@@ -17,15 +17,19 @@ pub struct Window {
     buffer: Arc<Mutex<Buffer>>,
     cursor: UVec2,
     scroll: usize,
+    size: UVec2,
 }
 
 impl Window {
     pub fn new(buffer_id: BufferId, buffer: Arc<Mutex<Buffer>>) -> Self {
+        let term_size = get_terminal_size().unwrap();
+
         Self {
             buffer_id,
             buffer,
             cursor: UVec2::default(),
             scroll: 0,
+            size: UVec2::new(term_size.x, term_size.y - 1),
         }
     }
 
@@ -68,7 +72,7 @@ impl Window {
 
                 self.cursor = pos;
             }
-            self.sync_scroll(get_terminal_size().unwrap());
+            self.sync_scroll();
         }
     }
 
@@ -87,7 +91,7 @@ impl Window {
                 }
             }
         }
-        self.sync_scroll(get_terminal_size().unwrap());
+        self.sync_scroll();
     }
 
     pub fn move_to_y(&mut self, y: usize) {
@@ -105,12 +109,12 @@ impl Window {
                 self.cursor.x = line.len();
             }
         }
-        self.sync_scroll(get_terminal_size().unwrap());
+        self.sync_scroll();
     }
 
     pub fn move_to_line_start(&mut self) {
         self.cursor.x = 0;
-        self.sync_scroll(get_terminal_size().unwrap());
+        self.sync_scroll();
     }
 
     pub fn move_to_line_end(&mut self) {
@@ -124,12 +128,12 @@ impl Window {
                 self.cursor.x = line.len();
             }
         }
-        self.sync_scroll(get_terminal_size().unwrap());
+        self.sync_scroll();
     }
 
     pub fn move_to_buffer_start(&mut self) {
         self.cursor = UVec2::new(0, 0);
-        self.sync_scroll(get_terminal_size().unwrap());
+        self.sync_scroll();
     }
 
     pub fn move_to_buffer_end(&mut self) {
@@ -141,15 +145,15 @@ impl Window {
                 self.cursor = UVec2::new(line.len(), line_count - 1);
             }
         }
-        self.sync_scroll(get_terminal_size().unwrap());
+        self.sync_scroll();
     }
 
-    pub fn sync_scroll(&mut self, view_size: UVec2) {
+    pub fn sync_scroll(&mut self) {
         if self.cursor.y < self.scroll {
             self.scroll = self.cursor.y;
-        } else if self.cursor.y >= self.scroll + view_size.y {
-            if view_size.y > 0 {
-                self.scroll = self.cursor.y - view_size.y + 1;
+        } else if self.cursor.y >= self.scroll + self.size.y {
+            if self.size.y > 0 {
+                self.scroll = self.cursor.y - self.size.y + 1;
             } else {
                 self.scroll = self.cursor.y;
             }
