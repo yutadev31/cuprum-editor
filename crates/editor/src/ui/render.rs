@@ -6,12 +6,12 @@ use std::{
 use crossterm::{
     cursor::{self, MoveTo},
     execute, queue,
-    style::Print,
+    style::{self, Print},
     terminal::{self, disable_raw_mode, enable_raw_mode},
 };
 use utils::vec2::UVec2;
 
-use crate::{buffer::Buffer, window::Window};
+use crate::{action::Mode, buffer::Buffer, window::Window};
 
 #[derive(Debug, Default)]
 pub struct Renderer {}
@@ -37,10 +37,12 @@ impl Renderer {
         &self,
         active_window: Arc<Mutex<Window>>,
         active_buffer: Arc<Mutex<Buffer>>,
+        mode: Mode,
+        command_buf: String,
     ) -> anyhow::Result<()> {
         let win = active_window.lock().unwrap();
 
-        let (_w, h) = terminal::size()?;
+        let (w, h) = terminal::size()?;
 
         queue!(
             stdout(),
@@ -56,14 +58,41 @@ impl Renderer {
             .get_lines()
             .iter()
             .skip(scroll)
-            .take(h as usize)
+            .take((h - 1) as usize)
             .enumerate()
         {
             queue!(stdout(), MoveTo(0, y as u16), Print(line))?;
         }
 
-        let pos = UVec2::new(pos.x, pos.y.saturating_sub(scroll));
-        queue!(stdout(), cursor::MoveTo(pos.x as u16, pos.y as u16))?;
+        if let Mode::Command = mode {
+            queue!(
+                stdout(),
+                cursor::MoveTo(0, h - 1),
+                Print(':'),
+                Print(command_buf)
+            )?;
+        } else {
+            let status = format!(" {} ", mode.to_string());
+
+            queue!(
+                stdout(),
+                cursor::MoveTo(0, h - 1),
+                style::SetBackgroundColor(style::Color::White),
+                style::SetForegroundColor(style::Color::Black),
+                Print(status.clone()),
+                Print(" ".repeat(w as usize - status.len())),
+                style::ResetColor
+            )?;
+
+            let pos = UVec2::new(pos.x, pos.y.saturating_sub(scroll));
+            queue!(stdout(), cursor::MoveTo(pos.x as u16, pos.y as u16))?;
+        }
+
+        if let Mode::Normal = mode {
+            queue!(stdout(), cursor::SetCursorStyle::SteadyBlock)?;
+        } else {
+            queue!(stdout(), cursor::SetCursorStyle::SteadyBar)?;
+        }
 
         stdout().flush()?;
 

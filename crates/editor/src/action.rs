@@ -15,6 +15,18 @@ pub enum EditorAction {
 pub enum Mode {
     Normal,
     Insert,
+    Command,
+}
+
+impl ToString for Mode {
+    fn to_string(&self) -> String {
+        match self {
+            Mode::Normal => "NORMAL",
+            Mode::Insert => "INSERT",
+            Mode::Command => "COMMAND",
+        }
+        .to_string()
+    }
 }
 
 #[derive(Debug, Clone)]

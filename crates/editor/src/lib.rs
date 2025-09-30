@@ -15,6 +15,7 @@ use crate::{
     action::{Action, EditorAction, Mode},
     buffer::Buffer,
     ui::{
+        commands::CommandMap,
         input::{InputManager, KeyCode},
         render::Renderer,
     },
@@ -83,6 +84,8 @@ pub struct Editor {
     renderer: Renderer,
     input_manager: InputManager,
     mode: Mode,
+    command_buf: String,
+    command_map: CommandMap,
 }
 
 impl Editor {
@@ -107,6 +110,8 @@ impl Editor {
             renderer: Renderer::default(),
             input_manager: InputManager::default(),
             mode: Mode::Normal,
+            command_buf: String::new(),
+            command_map: CommandMap::default(),
         })
     }
 
@@ -114,38 +119,41 @@ impl Editor {
         self.window_manager.get_window(self.active_window)
     }
 
+    fn on_action(&mut self, action: Action) -> anyhow::Result<bool> {
+        if let Some(active_window) = self.get_active_window() {
+            let mut active_window = active_window.lock().unwrap();
+            match action {
+                Action::Editor(action) => match action {
+                    EditorAction::Quit => return Ok(true),
+                    EditorAction::Mode(mode) => {
+                        self.mode = mode;
+                    }
+                    EditorAction::Buffer(action) => {
+                        let active_buffer = active_window.get_buffer();
+                        let mut active_buffer = active_buffer.lock().unwrap();
+                        active_buffer.on_action(action)?;
+                    }
+                    EditorAction::Window(action) => {
+                        active_window.on_action(action);
+                    }
+                },
+            }
+        }
+        Ok(false)
+    }
+
     fn process_normal(&mut self) -> anyhow::Result<bool> {
         let evt = self.input_manager.read_event_normal()?;
 
-        let active_window = self.get_active_window();
-
-        if let Some(active_window) = active_window {
-            let mut active_window = active_window.lock().unwrap();
-            if let Some(action) = evt {
-                match action {
-                    Action::Editor(action) => match action {
-                        EditorAction::Quit => return Ok(true),
-                        EditorAction::Mode(mode) => {
-                            self.mode = mode;
-                        }
-                        EditorAction::Buffer(action) => {
-                            let active_buffer = active_window.get_buffer();
-                            let mut active_buffer = active_buffer.lock().unwrap();
-                            active_buffer.on_action(action)?;
-                        }
-                        EditorAction::Window(action) => {
-                            active_window.on_action(action);
-                        }
-                    },
-                }
-            }
+        if let Some(action) = evt {
+            self.on_action(action)?;
         }
 
         Ok(false)
     }
 
     fn process_insert(&mut self) -> anyhow::Result<bool> {
-        if let Some(key_code) = self.input_manager.read_event_insert()? {
+        if let Some(key_code) = self.input_manager.read_event_raw()? {
             let active_window = self.get_active_window();
 
             if let Some(active_window) = active_window {
@@ -213,10 +221,45 @@ impl Editor {
         Ok(false)
     }
 
+    fn process_command(&mut self) -> anyhow::Result<bool> {
+        if let Some(key_code) = self.input_manager.read_event_raw()? {
+            match key_code {
+                KeyCode::Esc => {
+                    self.command_buf = String::new();
+                    self.mode = Mode::Normal;
+                }
+                KeyCode::Backspace => {
+                    if self.command_buf.is_empty() {
+                        self.command_buf = String::new();
+                        self.mode = Mode::Normal;
+                    } else {
+                        self.command_buf.pop();
+                    }
+                }
+                KeyCode::Char('\n') => {
+                    if let Some(action) = self.command_map.get(&self.command_buf) {
+                        let is_quit = self.on_action(action.clone())?;
+                        self.command_buf = String::new();
+                        self.mode = Mode::Normal;
+                        return Ok(is_quit);
+                    } else {
+                        self.command_buf = String::new();
+                        self.mode = Mode::Normal;
+                    }
+                }
+                KeyCode::Char(ch) => self.command_buf.push(ch),
+                _ => {}
+            }
+        }
+
+        Ok(false)
+    }
+
     fn process(&mut self) -> anyhow::Result<bool> {
         match self.mode {
             Mode::Normal => self.process_normal(),
             Mode::Insert => self.process_insert(),
+            Mode::Command => self.process_command(),
         }
     }
 
@@ -231,7 +274,8 @@ impl Editor {
                         win.get_buffer()
                     };
 
-                    self.renderer.render(win, buf)?;
+                    self.renderer
+                        .render(win, buf, self.mode.clone(), self.command_buf.clone())?;
                 }
             }
 
