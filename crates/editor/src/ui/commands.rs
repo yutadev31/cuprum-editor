@@ -8,7 +8,7 @@ pub struct CommandMap {
 }
 
 impl CommandMap {
-    /// Register a key sequence to an action
+    /// Register a command name to an action
     pub fn reg(&mut self, name: &str, action: Action) {
         self.map.insert(name.to_string(), action);
     }
