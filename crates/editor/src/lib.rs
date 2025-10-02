@@ -3,10 +3,10 @@ pub mod buffer;
 mod ui;
 pub mod window;
 
-use std::{collections::HashMap, path::PathBuf, sync::Arc, thread, time::Duration};
+use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
 
 use crossterm::event::{self, Event};
-use tokio::sync::Mutex;
+use tokio::{sync::Mutex, time::sleep};
 use utils::vec2::IVec2;
 
 use crate::{
@@ -329,7 +329,7 @@ pub async fn main(files: Vec<String>) -> anyhow::Result<()> {
                     .await
                     .unwrap();
             }
-            thread::sleep(Duration::from_millis(16));
+            sleep(Duration::from_millis(32)).await;
         }
         renderer.clean_screen().ok();
     });
