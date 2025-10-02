@@ -206,8 +206,10 @@ impl InputManager {
         })
     }
 
-    pub fn read_event_normal(&mut self) -> anyhow::Result<Option<Action>> {
-        let crossterm_key = event::read()?; // 処理の前にキーを読む
+    pub fn read_event_normal(
+        &mut self,
+        crossterm_key: event::Event,
+    ) -> anyhow::Result<Option<Action>> {
         let key = self.crossterm_to_app_key(crossterm_key)?;
 
         // 500ms以上間隔が空いたらバッファをクリア
@@ -238,9 +240,8 @@ impl InputManager {
         }
     }
 
-    pub fn read_event_raw(&mut self) -> anyhow::Result<Option<KeyCode>> {
-        let crossterm_key = event::read()?; // 処理の前にキーを読む
-        let key = self.crossterm_to_app_key(crossterm_key)?;
+    pub fn read_event_raw(&mut self, event: event::Event) -> anyhow::Result<Option<KeyCode>> {
+        let key = self.crossterm_to_app_key(event)?;
 
         Ok(key)
     }

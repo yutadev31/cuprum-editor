@@ -1,5 +1,6 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
+use tokio::sync::Mutex;
 use utils::{
     term::get_terminal_size,
     vec2::{IVec2, UVec2},
@@ -45,10 +46,10 @@ impl Window {
         self.cursor
     }
 
-    pub(crate) fn get_render_cursor(&self) -> UVec2 {
-        if let Ok(buffer) = self.buffer.lock()
-            && let Some(line) = buffer.get_line(self.cursor.y)
-        {
+    pub(crate) async fn get_render_cursor(&self) -> UVec2 {
+        let buffer = self.buffer.lock().await;
+
+        if let Some(line) = buffer.get_line(self.cursor.y) {
             if self.cursor.x > line.len() {
                 return UVec2::new(line.len(), self.cursor.y);
             } else {
@@ -62,9 +63,10 @@ impl Window {
         self.scroll
     }
 
-    pub fn move_by(&mut self, offset: IVec2) {
+    pub async fn move_by(&mut self, offset: IVec2) {
         if let Some(pos) = self.cursor.checked_add(offset) {
-            if let Ok(buffer) = self.buffer.lock() {
+            {
+                let buffer = self.buffer.lock().await;
                 let line_count = buffer.get_line_count();
                 if pos.y >= line_count {
                     return;
@@ -76,8 +78,9 @@ impl Window {
         }
     }
 
-    pub fn move_to_x(&mut self, x: usize) {
-        if let Ok(buffer) = self.buffer.lock() {
+    pub async fn move_to_x(&mut self, x: usize) {
+        {
+            let buffer = self.buffer.lock().await;
             let line_count = buffer.get_line_count();
             if self.cursor.y >= line_count {
                 return;
@@ -94,8 +97,9 @@ impl Window {
         self.sync_scroll();
     }
 
-    pub fn move_to_y(&mut self, y: usize) {
-        if let Ok(buffer) = self.buffer.lock() {
+    pub async fn move_to_y(&mut self, y: usize) {
+        {
+            let buffer = self.buffer.lock().await;
             let line_count = buffer.get_line_count();
             if y >= line_count {
                 return;
@@ -117,8 +121,9 @@ impl Window {
         self.sync_scroll();
     }
 
-    pub fn move_to_line_end(&mut self) {
-        if let Ok(buffer) = self.buffer.lock() {
+    pub async fn move_to_line_end(&mut self) {
+        {
+            let buffer = self.buffer.lock().await;
             let line_count = buffer.get_line_count();
             if self.cursor.y >= line_count {
                 return;
@@ -136,8 +141,9 @@ impl Window {
         self.sync_scroll();
     }
 
-    pub fn move_to_buffer_end(&mut self) {
-        if let Ok(buffer) = self.buffer.lock() {
+    pub async fn move_to_buffer_end(&mut self) {
+        {
+            let buffer = self.buffer.lock().await;
             let line_count = buffer.get_line_count();
             if line_count > 0
                 && let Some(line) = buffer.get_line(line_count - 1)
@@ -160,17 +166,17 @@ impl Window {
         }
     }
 
-    pub(crate) fn on_action(&mut self, action: WindowAction) {
+    pub(crate) async fn on_action(&mut self, action: WindowAction) {
         match action {
             WindowAction::Cursor(action) => match action {
-                CursorAction::MoveLeft => self.move_by(IVec2::left()),
-                CursorAction::MoveDown => self.move_by(IVec2::down()),
-                CursorAction::MoveUp => self.move_by(IVec2::up()),
-                CursorAction::MoveRight => self.move_by(IVec2::right()),
+                CursorAction::MoveLeft => self.move_by(IVec2::left()).await,
+                CursorAction::MoveDown => self.move_by(IVec2::down()).await,
+                CursorAction::MoveUp => self.move_by(IVec2::up()).await,
+                CursorAction::MoveRight => self.move_by(IVec2::right()).await,
                 CursorAction::MoveToStartOfLine => self.move_to_line_start(),
-                CursorAction::MoveToEndOfLine => self.move_to_line_end(),
+                CursorAction::MoveToEndOfLine => self.move_to_line_end().await,
                 CursorAction::MoveToStartOfBuffer => self.move_to_buffer_start(),
-                CursorAction::MoveToEndOfBuffer => self.move_to_buffer_end(),
+                CursorAction::MoveToEndOfBuffer => self.move_to_buffer_end().await,
             },
         }
     }

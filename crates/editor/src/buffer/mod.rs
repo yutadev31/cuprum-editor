@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use crate::{action::BufferAction, buffer::file::EditorFile};
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Buffer {
     file: Option<EditorFile>,
     content: Vec<String>,
@@ -133,6 +133,16 @@ impl Buffer {
             }
         }
         Ok(())
+    }
+}
+
+impl Default for Buffer {
+    fn default() -> Self {
+        Buffer {
+            file: None,
+            content: vec![String::new()],
+            dirty: false,
+        }
     }
 }
 

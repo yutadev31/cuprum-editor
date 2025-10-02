@@ -3,12 +3,10 @@ pub mod buffer;
 mod ui;
 pub mod window;
 
-use std::{
-    collections::HashMap,
-    path::PathBuf,
-    sync::{Arc, Mutex},
-};
+use std::{collections::HashMap, path::PathBuf, sync::Arc, thread, time::Duration};
 
+use crossterm::event::{self, Event};
+use tokio::sync::Mutex;
 use utils::vec2::IVec2;
 
 use crate::{
@@ -78,14 +76,15 @@ impl WindowManager {
 
 #[derive(Debug)]
 pub struct Editor {
-    _buffer_manager: BufferManager,
+    #[allow(dead_code)]
+    buffer_manager: BufferManager,
     window_manager: WindowManager,
     active_window: WindowId,
-    renderer: Renderer,
     input_manager: InputManager,
     mode: Mode,
     command_buf: String,
     command_map: CommandMap,
+    pub is_quit: bool,
 }
 
 impl Editor {
@@ -104,14 +103,14 @@ impl Editor {
         }
 
         Ok(Self {
-            _buffer_manager: buffer_manager,
+            buffer_manager,
             window_manager,
             active_window: WindowId(0),
-            renderer: Renderer::default(),
             input_manager: InputManager::default(),
             mode: Mode::Normal,
             command_buf: String::new(),
             command_map: CommandMap::default(),
+            is_quit: false,
         })
     }
 
@@ -119,9 +118,9 @@ impl Editor {
         self.window_manager.get_window(self.active_window)
     }
 
-    fn on_action(&mut self, action: Action) -> anyhow::Result<bool> {
+    async fn on_action(&mut self, action: Action) -> anyhow::Result<bool> {
         if let Some(active_window) = self.get_active_window() {
-            let mut active_window = active_window.lock().unwrap();
+            let mut active_window = active_window.lock().await;
             match action {
                 Action::Editor(action) => match action {
                     EditorAction::Quit => return Ok(true),
@@ -130,11 +129,11 @@ impl Editor {
                     }
                     EditorAction::Buffer(action) => {
                         let active_buffer = active_window.get_buffer();
-                        let mut active_buffer = active_buffer.lock().unwrap();
+                        let mut active_buffer = active_buffer.lock().await;
                         active_buffer.on_action(action)?;
                     }
                     EditorAction::Window(action) => {
-                        active_window.on_action(action);
+                        active_window.on_action(action).await;
                     }
                 },
             }
@@ -142,28 +141,28 @@ impl Editor {
         Ok(false)
     }
 
-    fn process_normal(&mut self) -> anyhow::Result<bool> {
-        let evt = self.input_manager.read_event_normal()?;
+    async fn process_normal(&mut self, event: Event) -> anyhow::Result<bool> {
+        let evt = self.input_manager.read_event_normal(event)?;
 
         if let Some(action) = evt {
-            self.on_action(action)?;
+            self.on_action(action).await?;
         }
 
         Ok(false)
     }
 
-    fn process_insert(&mut self) -> anyhow::Result<bool> {
-        if let Some(key_code) = self.input_manager.read_event_raw()? {
+    async fn process_insert(&mut self, event: Event) -> anyhow::Result<bool> {
+        if let Some(key_code) = self.input_manager.read_event_raw(event)? {
             let active_window = self.get_active_window();
 
             if let Some(active_window) = active_window {
-                let mut active_window = active_window.lock().unwrap();
-                let cursor = active_window.get_render_cursor();
+                let mut active_window = active_window.lock().await;
+                let cursor = active_window.get_render_cursor().await;
                 match key_code {
                     KeyCode::Char(ch) => {
                         {
                             let active_buffer = active_window.get_buffer();
-                            let mut active_buffer = active_buffer.lock().unwrap();
+                            let mut active_buffer = active_buffer.lock().await;
 
                             if ch == '\n' {
                                 active_buffer.split_line(cursor.x, cursor.y);
@@ -173,10 +172,10 @@ impl Editor {
                         }
 
                         if ch == '\n' {
-                            active_window.move_by(IVec2::new(0, 1));
-                            active_window.move_to_x(0);
+                            active_window.move_by(IVec2::new(0, 1)).await;
+                            active_window.move_to_x(0).await;
                         } else {
-                            active_window.move_by(IVec2::right());
+                            active_window.move_by(IVec2::right()).await;
                         }
                     }
                     KeyCode::Backspace => {
@@ -186,7 +185,7 @@ impl Editor {
 
                         let line_len = {
                             let active_buffer = active_window.get_buffer();
-                            let mut active_buffer = active_buffer.lock().unwrap();
+                            let mut active_buffer = active_buffer.lock().await;
 
                             let line_len = active_buffer.get_line_length(cursor.y - 1).unwrap();
                             if cursor.x == 0 {
@@ -199,15 +198,15 @@ impl Editor {
 
                         if cursor.x == 0 {
                             // 行頭に戻る
-                            active_window.move_by(IVec2::new(0, -1));
-                            active_window.move_to_x(line_len);
+                            active_window.move_by(IVec2::new(0, -1)).await;
+                            active_window.move_to_x(line_len).await;
                         } else {
-                            active_window.move_by(IVec2::left());
+                            active_window.move_by(IVec2::left()).await;
                         }
                     }
                     KeyCode::Delete => {
                         let active_buffer = active_window.get_buffer();
-                        let mut active_buffer = active_buffer.lock().unwrap();
+                        let mut active_buffer = active_buffer.lock().await;
                         active_buffer.remove_char(cursor.x, cursor.y);
                     }
                     KeyCode::Esc => {
@@ -221,8 +220,8 @@ impl Editor {
         Ok(false)
     }
 
-    fn process_command(&mut self) -> anyhow::Result<bool> {
-        if let Some(key_code) = self.input_manager.read_event_raw()? {
+    async fn process_command(&mut self, event: Event) -> anyhow::Result<bool> {
+        if let Some(key_code) = self.input_manager.read_event_raw(event)? {
             match key_code {
                 KeyCode::Esc => {
                     self.command_buf = String::new();
@@ -238,7 +237,7 @@ impl Editor {
                 }
                 KeyCode::Char('\n') => {
                     if let Some(action) = self.command_map.get(&self.command_buf) {
-                        let is_quit = self.on_action(action.clone())?;
+                        let is_quit = self.on_action(action.clone()).await?;
                         self.command_buf = String::new();
                         self.mode = Mode::Normal;
                         return Ok(is_quit);
@@ -255,42 +254,67 @@ impl Editor {
         Ok(false)
     }
 
-    fn process(&mut self) -> anyhow::Result<bool> {
+    async fn process(&mut self, event: Event) -> anyhow::Result<bool> {
         match self.mode {
-            Mode::Normal => self.process_normal(),
-            Mode::Insert => self.process_insert(),
-            Mode::Command => self.process_command(),
+            Mode::Normal => self.process_normal(event).await,
+            Mode::Insert => self.process_insert(event).await,
+            Mode::Command => self.process_command(event).await,
         }
     }
 
-    pub fn run(&mut self) -> anyhow::Result<()> {
-        self.renderer.init_screen()?;
-        loop {
-            {
-                let active_window = self.get_active_window();
-                if let Some(win) = active_window {
-                    let buf = {
-                        let win = win.lock().unwrap();
-                        win.get_buffer()
-                    };
-
-                    self.renderer
-                        .render(win, buf, self.mode.clone(), self.command_buf.clone())?;
+    pub async fn run(&mut self, event: Event) -> anyhow::Result<()> {
+        match self.process(event).await {
+            Ok(is_quit) => {
+                if is_quit {
+                    self.is_quit = true;
                 }
             }
-
-            match self.process() {
-                Ok(is_quit) => {
-                    if is_quit {
-                        break;
-                    }
-                }
-                Err(e) => {
-                    log::error!("Error: {:?}", e);
-                }
+            Err(e) => {
+                log::error!("Error: {:?}", e);
             }
         }
-        self.renderer.clean_screen()?;
         Ok(())
     }
+}
+
+pub async fn main(files: Vec<String>) -> anyhow::Result<()> {
+    let editor = Arc::new(Mutex::new(Editor::new(files)?));
+
+    let editor1 = editor.clone();
+    tokio::spawn(async move {
+        let renderer = Renderer::default();
+        renderer.init_screen().ok();
+        loop {
+            let editor = editor1.lock().await;
+            if editor.is_quit {
+                break;
+            }
+            let active_window = editor.get_active_window();
+            if let Some(win) = active_window {
+                let buf = {
+                    let win = win.lock().await;
+                    win.get_buffer()
+                };
+
+                renderer
+                    .render(win, buf, editor.mode.clone(), editor.command_buf.clone())
+                    .await
+                    .unwrap();
+            }
+            thread::sleep(Duration::from_millis(16));
+        }
+        renderer.clean_screen().ok();
+    });
+
+    loop {
+        let event = event::read()?;
+        let mut editor = editor.lock().await;
+        editor.run(event).await?;
+
+        if editor.is_quit {
+            break;
+        }
+    }
+
+    Ok(())
 }
