@@ -281,7 +281,7 @@ pub async fn main(files: Vec<String>) -> anyhow::Result<()> {
     let editor = Arc::new(Mutex::new(Editor::new(files)?));
 
     let editor1 = editor.clone();
-    tokio::spawn(async move {
+    let handle = tokio::spawn(async move {
         let renderer = Renderer::default();
         renderer.init_screen().ok();
         loop {
@@ -315,6 +315,8 @@ pub async fn main(files: Vec<String>) -> anyhow::Result<()> {
             break;
         }
     }
+
+    handle.await?;
 
     Ok(())
 }
