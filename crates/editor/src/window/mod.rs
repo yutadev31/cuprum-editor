@@ -49,9 +49,10 @@ impl Window {
     pub(crate) async fn get_render_cursor(&self) -> UVec2 {
         let buffer = self.buffer.lock().await;
 
-        if let Some(line) = buffer.get_line(self.cursor.y) {
-            if self.cursor.x > line.len() {
-                return UVec2::new(line.len(), self.cursor.y);
+        if let Some(line_len) = buffer.get_line_length(self.cursor.y) {
+            let line_end = line_len.checked_sub(1).unwrap_or(line_len);
+            if self.cursor.x > line_end {
+                return UVec2::new(line_end, self.cursor.y);
             } else {
                 return self.cursor;
             }
@@ -64,6 +65,19 @@ impl Window {
     }
 
     pub async fn move_by(&mut self, offset: IVec2) {
+        {
+            let buffer = self.buffer.lock().await;
+            if let Some(line_len) = buffer.get_line_length(self.cursor.y)
+                && offset.x != 0
+            {
+                let line_end = line_len.checked_sub(1).unwrap_or(line_len);
+
+                if self.cursor.x > line_end {
+                    self.cursor.x = line_end;
+                }
+            }
+        }
+
         if let Some(pos) = self.cursor.checked_add(offset) {
             {
                 let buffer = self.buffer.lock().await;
@@ -86,9 +100,10 @@ impl Window {
                 return;
             }
 
-            if let Some(line) = buffer.get_line(self.cursor.y) {
-                if x > line.len() {
-                    self.cursor.x = line.len();
+            if let Some(line_len) = buffer.get_line_length(self.cursor.y) {
+                let line_end = line_len.checked_sub(1).unwrap_or(line_len);
+                if x > line_end {
+                    self.cursor.x = line_end;
                 } else {
                     self.cursor.x = x;
                 }
@@ -129,9 +144,7 @@ impl Window {
                 return;
             }
 
-            if let Some(line) = buffer.get_line(self.cursor.y) {
-                self.cursor.x = line.len();
-            }
+            self.cursor.x = usize::MAX;
         }
         self.sync_scroll();
     }
