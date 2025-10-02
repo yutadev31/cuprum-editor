@@ -12,3 +12,4 @@ chrono.workspace = true
 crossterm.workspace = true
 utils.workspace = true
 log.workspace = true
+tokio.workspace = true

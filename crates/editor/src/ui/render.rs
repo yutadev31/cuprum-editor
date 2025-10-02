@@ -1,6 +1,6 @@
 use std::{
     io::{Write, stdout},
-    sync::{Arc, Mutex},
+    sync::Arc,
 };
 
 use crossterm::{
@@ -9,6 +9,7 @@ use crossterm::{
     style::{self, Print},
     terminal::{self, disable_raw_mode, enable_raw_mode},
 };
+use tokio::sync::Mutex;
 use utils::vec2::UVec2;
 
 use crate::{action::Mode, buffer::Buffer, window::Window};
@@ -33,14 +34,14 @@ impl Renderer {
         Ok(())
     }
 
-    pub fn render(
+    pub async fn render(
         &self,
         active_window: Arc<Mutex<Window>>,
         active_buffer: Arc<Mutex<Buffer>>,
         mode: Mode,
         command_buf: String,
     ) -> anyhow::Result<()> {
-        let win = active_window.lock().unwrap();
+        let win = active_window.lock().await;
 
         let (w, h) = terminal::size()?;
 
@@ -50,10 +51,10 @@ impl Renderer {
             cursor::MoveTo(0, 0)
         )?;
 
-        let pos = win.get_render_cursor();
+        let pos = win.get_render_cursor().await;
         let scroll = win.get_scroll();
 
-        let buf = active_buffer.lock().unwrap();
+        let buf = active_buffer.lock().await;
         for (y, line) in buf
             .get_lines()
             .iter()
