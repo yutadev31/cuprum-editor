@@ -42,52 +42,62 @@ impl Renderer {
         command_buf: String,
     ) -> anyhow::Result<()> {
         let win = active_window.lock().await;
+        let (term_w, term_h) = terminal::size()?;
 
-        let (w, h) = terminal::size()?;
-
-        queue!(
-            stdout(),
-            terminal::Clear(terminal::ClearType::All),
-            cursor::MoveTo(0, 0)
-        )?;
+        queue!(stdout(), cursor::MoveTo(0, 0))?;
 
         let pos = win.get_render_cursor().await;
         let scroll = win.get_scroll();
+
+        let win_position = win.get_position();
+        let win_size = win.get_size();
 
         let buf = active_buffer.lock().await;
         for (y, line) in buf
             .get_lines()
             .iter()
             .skip(scroll)
-            .take((h - 1) as usize)
+            .take(win_size.y)
             .enumerate()
         {
-            queue!(stdout(), MoveTo(0, y as u16), Print(line))?;
+            queue!(
+                stdout(),
+                MoveTo(win_position.x as u16, (win_position.y + y) as u16),
+                Print(line),
+                Print(" ".repeat(win_size.x - line.len())),
+            )?;
         }
 
         let mode = mode.lock().await.clone();
         if let Mode::Command = mode {
             queue!(
                 stdout(),
-                cursor::MoveTo(0, h - 1),
+                cursor::MoveTo(0, term_h - 1),
+                terminal::Clear(terminal::ClearType::CurrentLine),
                 Print(':'),
-                Print(command_buf)
+                Print(command_buf),
             )?;
         } else {
             let status = format!(" {} ", mode.to_string());
 
             queue!(
                 stdout(),
-                cursor::MoveTo(0, h - 1),
+                cursor::MoveTo(0, term_h - 1),
                 style::SetBackgroundColor(style::Color::White),
                 style::SetForegroundColor(style::Color::Black),
                 Print(status.clone()),
-                Print(" ".repeat(w as usize - status.len())),
+                Print(" ".repeat(term_w as usize - status.len())),
                 style::ResetColor
             )?;
 
             let pos = UVec2::new(pos.x, pos.y.saturating_sub(scroll));
-            queue!(stdout(), cursor::MoveTo(pos.x as u16, pos.y as u16))?;
+            queue!(
+                stdout(),
+                cursor::MoveTo(
+                    (win_position.x + pos.x) as u16,
+                    (win_position.y + pos.y) as u16
+                )
+            )?;
         }
 
         if let Mode::Normal = mode {
