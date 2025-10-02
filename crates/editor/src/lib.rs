@@ -81,7 +81,7 @@ pub struct Editor {
     window_manager: WindowManager,
     active_window: WindowId,
     input_manager: InputManager,
-    mode: Mode,
+    mode: Arc<Mutex<Mode>>,
     command_buf: String,
     command_map: CommandMap,
     pub is_quit: bool,
@@ -89,16 +89,17 @@ pub struct Editor {
 
 impl Editor {
     pub fn new(files: Vec<String>) -> anyhow::Result<Self> {
+        let mode = Arc::new(Mutex::new(Mode::Normal));
         let mut buffer_manager = BufferManager::default();
         let mut window_manager = WindowManager::default();
         if files.is_empty() {
             let (id, buf) = buffer_manager.open_buffer(Buffer::default());
-            window_manager.open_window(Window::new(id, buf));
+            window_manager.open_window(Window::new(id, buf, mode.clone()));
         } else {
             for file in files {
                 let buf = Buffer::open(PathBuf::from(file))?;
                 let (id, buf) = buffer_manager.open_buffer(buf);
-                window_manager.open_window(Window::new(id, buf));
+                window_manager.open_window(Window::new(id, buf, mode.clone()));
             }
         }
 
@@ -107,7 +108,7 @@ impl Editor {
             window_manager,
             active_window: WindowId(0),
             input_manager: InputManager::default(),
-            mode: Mode::Normal,
+            mode,
             command_buf: String::new(),
             command_map: CommandMap::default(),
             is_quit: false,
@@ -118,6 +119,11 @@ impl Editor {
         self.window_manager.get_window(self.active_window)
     }
 
+    async fn set_mode(&mut self, mode: Mode) {
+        let mut mutex_mode = self.mode.lock().await;
+        *mutex_mode = mode;
+    }
+
     async fn on_action(&mut self, action: Action) -> anyhow::Result<bool> {
         if let Some(active_window) = self.get_active_window() {
             let mut active_window = active_window.lock().await;
@@ -125,13 +131,13 @@ impl Editor {
                 Action::Editor(action) => match action {
                     EditorAction::Quit => return Ok(true),
                     EditorAction::Mode(mode) => {
+                        self.set_mode(mode.clone()).await;
+
                         if let Mode::Insert(true) = mode {
                             active_window
                                 .on_action(WindowAction::Cursor(CursorAction::MoveRight))
                                 .await;
                         }
-
-                        self.mode = mode;
                     }
                     EditorAction::Buffer(action) => {
                         let active_buffer = active_window.get_buffer();
@@ -189,11 +195,18 @@ impl Editor {
                             return Ok(false);
                         }
 
+                        let x = cursor.x;
+
                         let line_len = {
                             let active_buffer = active_window.get_buffer();
                             let mut active_buffer = active_buffer.lock().await;
 
-                            let line_len = active_buffer.get_line_length(cursor.y - 1).unwrap();
+                            let line_len = if cursor.x == 0 && cursor.y != 0 {
+                                active_buffer.get_line_length(cursor.y - 1)
+                            } else {
+                                None
+                            };
+
                             if cursor.x == 0 {
                                 active_buffer.join_lines(cursor.y - 1);
                             } else {
@@ -202,12 +215,14 @@ impl Editor {
                             line_len
                         };
 
-                        if cursor.x == 0 {
+                        if cursor.x != 0 {
+                            active_window.move_to_x(x - 1).await;
+                        } else if let Some(line_len) = line_len
+                            && cursor.y != 0
+                        {
                             // 行頭に戻る
                             active_window.move_by(IVec2::new(0, -1)).await;
                             active_window.move_to_x(line_len).await;
-                        } else {
-                            active_window.move_by(IVec2::left()).await;
                         }
                     }
                     KeyCode::Delete => {
@@ -222,7 +237,7 @@ impl Editor {
                                 .await;
                         }
 
-                        self.mode = Mode::Normal;
+                        self.set_mode(Mode::Normal).await;
                     }
                     _ => {}
                 }
@@ -237,12 +252,12 @@ impl Editor {
             match key_code {
                 KeyCode::Esc => {
                     self.command_buf = String::new();
-                    self.mode = Mode::Normal;
+                    self.set_mode(Mode::Normal).await;
                 }
                 KeyCode::Backspace => {
                     if self.command_buf.is_empty() {
                         self.command_buf = String::new();
-                        self.mode = Mode::Normal;
+                        self.set_mode(Mode::Normal).await;
                     } else {
                         self.command_buf.pop();
                     }
@@ -251,11 +266,11 @@ impl Editor {
                     if let Some(action) = self.command_map.get(&self.command_buf) {
                         let is_quit = self.on_action(action.clone()).await?;
                         self.command_buf = String::new();
-                        self.mode = Mode::Normal;
+                        self.set_mode(Mode::Normal).await;
                         return Ok(is_quit);
                     } else {
                         self.command_buf = String::new();
-                        self.mode = Mode::Normal;
+                        self.set_mode(Mode::Normal).await;
                     }
                 }
                 KeyCode::Char(ch) => self.command_buf.push(ch),
@@ -267,7 +282,8 @@ impl Editor {
     }
 
     async fn process(&mut self, event: Event) -> anyhow::Result<bool> {
-        match self.mode {
+        let mode = self.mode.lock().await.clone();
+        match mode {
             Mode::Normal => self.process_normal(event).await,
             Mode::Insert(is_append) => self.process_insert(event, is_append).await,
             Mode::Command => self.process_command(event).await,

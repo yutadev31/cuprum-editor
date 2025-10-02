@@ -8,7 +8,7 @@ use utils::{
 
 use crate::{
     BufferId,
-    action::{CursorAction, WindowAction},
+    action::{CursorAction, Mode, WindowAction},
     buffer::Buffer,
 };
 
@@ -16,18 +16,20 @@ use crate::{
 pub struct Window {
     buffer_id: BufferId,
     buffer: Arc<Mutex<Buffer>>,
+    mode: Arc<Mutex<Mode>>,
     cursor: UVec2,
     scroll: usize,
     size: UVec2,
 }
 
 impl Window {
-    pub fn new(buffer_id: BufferId, buffer: Arc<Mutex<Buffer>>) -> Self {
+    pub fn new(buffer_id: BufferId, buffer: Arc<Mutex<Buffer>>, mode: Arc<Mutex<Mode>>) -> Self {
         let term_size = get_terminal_size().unwrap();
 
         Self {
             buffer_id,
             buffer,
+            mode,
             cursor: UVec2::default(),
             scroll: 0,
             size: UVec2::new(term_size.x, term_size.y - 1),
@@ -47,11 +49,9 @@ impl Window {
     }
 
     pub(crate) async fn get_render_cursor(&self) -> UVec2 {
-        let buffer = self.buffer.lock().await;
-
-        if let Some(line) = buffer.get_line(self.cursor.y) {
-            if self.cursor.x > line.len() {
-                return UVec2::new(line.len(), self.cursor.y);
+        if let Some(max_x) = self.get_cursor_max_x().await {
+            if self.cursor.x > max_x {
+                return UVec2::new(max_x, self.cursor.y);
             } else {
                 return self.cursor;
             }
@@ -59,11 +59,34 @@ impl Window {
         self.cursor
     }
 
+    pub async fn get_cursor_max_x(&self) -> Option<usize> {
+        let buffer = self.buffer.lock().await;
+        if let Some(line_len) = buffer.get_line_length(self.cursor.y) {
+            Some(if let Mode::Insert(_) = self.mode.lock().await.clone() {
+                line_len
+            } else {
+                line_len.checked_sub(1).unwrap_or(line_len)
+            })
+        } else {
+            None
+        }
+    }
+
     pub fn get_scroll(&self) -> usize {
         self.scroll
     }
 
     pub async fn move_by(&mut self, offset: IVec2) {
+        {
+            if let Some(max_x) = self.get_cursor_max_x().await
+                && offset.x != 0
+            {
+                if self.cursor.x > max_x {
+                    self.cursor.x = max_x;
+                }
+            }
+        }
+
         if let Some(pos) = self.cursor.checked_add(offset) {
             {
                 let buffer = self.buffer.lock().await;
@@ -80,15 +103,17 @@ impl Window {
 
     pub async fn move_to_x(&mut self, x: usize) {
         {
-            let buffer = self.buffer.lock().await;
-            let line_count = buffer.get_line_count();
-            if self.cursor.y >= line_count {
-                return;
+            {
+                let buffer = self.buffer.lock().await;
+                let line_count = buffer.get_line_count();
+                if self.cursor.y >= line_count {
+                    return;
+                }
             }
 
-            if let Some(line) = buffer.get_line(self.cursor.y) {
-                if x > line.len() {
-                    self.cursor.x = line.len();
+            if let Some(max_x) = self.get_cursor_max_x().await {
+                if x > max_x {
+                    self.cursor.x = max_x;
                 } else {
                     self.cursor.x = x;
                 }
@@ -129,9 +154,7 @@ impl Window {
                 return;
             }
 
-            if let Some(line) = buffer.get_line(self.cursor.y) {
-                self.cursor.x = line.len();
-            }
+            self.cursor.x = usize::MAX;
         }
         self.sync_scroll();
     }

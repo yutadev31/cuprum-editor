@@ -11,8 +11,9 @@ pub enum EditorAction {
     Buffer(BufferAction),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub enum Mode {
+    #[default]
     Normal,
     Insert(bool),
     Command,
