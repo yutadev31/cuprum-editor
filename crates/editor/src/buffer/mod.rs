@@ -2,6 +2,8 @@ pub mod file;
 
 use std::path::PathBuf;
 
+use utils::vec2::UVec2;
+
 use crate::{action::BufferAction, buffer::file::EditorFile};
 
 #[derive(Debug)]
@@ -61,26 +63,30 @@ impl Buffer {
         self.content.get(y).cloned()
     }
 
-    pub fn get_char(&self, x: usize, y: usize) -> Option<char> {
-        self.content.get(y).and_then(|line| line.chars().nth(x))
+    pub fn get_char(&self, pos: UVec2) -> Option<char> {
+        self.content
+            .get(pos.y)
+            .and_then(|line| line.chars().nth(pos.x))
     }
 
-    pub fn insert_char(&mut self, x: usize, y: usize, ch: char) {
+    pub fn insert_char(&mut self, pos: UVec2, ch: char) {
         self.mark_dirty();
-        if let Some(line) = self.content.get_mut(y) {
-            line.insert(x, ch);
+        if let Some(line) = self.content.get_mut(pos.y) {
+            line.insert(pos.x, ch);
         }
     }
 
-    pub fn remove_char(&mut self, x: usize, y: usize) -> Option<char> {
+    pub fn remove_char(&mut self, pos: UVec2) -> Option<char> {
         self.mark_dirty();
-        if let Some(line) = self.content.get_mut(y)
-            && x < line.len()
-        {
-            Some(line.remove(x))
-        } else {
-            None
+        if let Some(line) = self.content.get_mut(pos.y) {
+            if pos.x < line.len() {
+                return Some(line.remove(pos.x));
+            } else if pos.x == line.len() {
+                self.join_lines(pos.y);
+                return Some('\n');
+            }
         }
+        None
     }
 
     pub fn insert_line(&mut self, y: usize, content: String) {
@@ -107,13 +113,13 @@ impl Buffer {
         }
     }
 
-    pub fn split_line(&mut self, x: usize, y: usize) {
+    pub fn split_line(&mut self, pos: UVec2) {
         self.mark_dirty();
 
-        let original = self.content[y].clone();
-        let (p0, p1) = original.split_at(x);
-        self.content[y] = p0.to_string();
-        self.content.insert(y + 1, p1.to_string());
+        let original = self.content[pos.y].clone();
+        let (p0, p1) = original.split_at(pos.x);
+        self.content[pos.y] = p0.to_string();
+        self.content.insert(pos.y + 1, p1.to_string());
     }
 
     pub fn join_lines(&mut self, y: usize) {
@@ -156,15 +162,15 @@ mod tests {
         buf.insert_line(0, "Hello".to_string());
         buf.insert_line(1, "World".to_string());
 
-        assert_eq!(buf.get_char(0, 0), Some('H'));
-        assert_eq!(buf.get_char(4, 0), Some('o'));
-        assert_eq!(buf.get_char(0, 1), Some('W'));
-        assert_eq!(buf.get_char(4, 1), Some('d'));
-        assert_eq!(buf.get_char(5, 1), None);
+        assert_eq!(buf.get_char(UVec2::new(0, 0)), Some('H'));
+        assert_eq!(buf.get_char(UVec2::new(4, 0)), Some('o'));
+        assert_eq!(buf.get_char(UVec2::new(0, 1)), Some('W'));
+        assert_eq!(buf.get_char(UVec2::new(4, 1)), Some('d'));
+        assert_eq!(buf.get_char(UVec2::new(5, 1)), None);
 
-        assert_eq!(buf.remove_char(1, 0), Some('e'));
+        assert_eq!(buf.remove_char(UVec2::new(1, 0)), Some('e'));
         assert_eq!(buf.get_line(0), Some("Hllo".to_string()));
-        assert_eq!(buf.remove_char(10, 0), None);
+        assert_eq!(buf.remove_char(UVec2::new(10, 0)), None);
     }
 
     #[test]
@@ -191,7 +197,7 @@ mod tests {
         let mut buf = Buffer::default();
         buf.insert_line(0, "HelloWorld".to_string());
 
-        buf.split_line(5, 0);
+        buf.split_line(UVec2::new(5, 0));
         assert_eq!(buf.get_line_count(), 2);
         assert_eq!(buf.get_line(0), Some("Hello".to_string()));
         assert_eq!(buf.get_line(1), Some("World".to_string()));

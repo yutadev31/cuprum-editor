@@ -3,7 +3,9 @@ use std::collections::HashMap;
 use chrono::{DateTime, Duration, Local};
 use crossterm::event::{self, Event, KeyModifiers};
 
-use crate::action::{Action, BufferAction, CursorAction, EditorAction, Mode, WindowAction};
+use crate::action::{
+    Action, BufferAction, CursorAction, EditAction, EditorAction, Mode, WindowAction,
+};
 
 #[derive(Debug, Hash, PartialEq, Eq)]
 pub enum KeyCode {
@@ -120,22 +122,48 @@ impl Default for Keymap {
             Action::Editor(EditorAction::Mode(Mode::Insert(true))),
         );
         s.reg(
+            vec![KeyCode::Char('I')],
+            Action::Editor(EditorAction::Window(WindowAction::Edit(
+                EditAction::InsertLineStart,
+            ))),
+        );
+        s.reg(
+            vec![KeyCode::Char('A')],
+            Action::Editor(EditorAction::Window(WindowAction::Edit(
+                EditAction::AppendLineEnd,
+            ))),
+        );
+        s.reg(
             vec![KeyCode::Char(':')],
             Action::Editor(EditorAction::Mode(Mode::Command)),
         );
-        // s.reg(vec![KeyCode::Char('a')], "editor.mode.append");
-        // s.reg(vec![KeyCode::Char('I')], "editor.mode.insert-line-start");
-        // s.reg(vec![KeyCode::Char('A')], "editor.mode.append-line-end");
-        // s.reg(vec![KeyCode::Char('o')], "editor.mode.open-line-below");
-        // s.reg(vec![KeyCode::Char('O')], "editor.mode.open-line-above");
+        s.reg(
+            vec![KeyCode::Char('o')],
+            Action::Editor(EditorAction::Window(WindowAction::Edit(
+                EditAction::OpenLineBelow,
+            ))),
+        );
+        s.reg(
+            vec![KeyCode::Char('O')],
+            Action::Editor(EditorAction::Window(WindowAction::Edit(
+                EditAction::OpenLineAbove,
+            ))),
+        );
 
         // Editing
-        // s.reg(vec![KeyCode::Char('x')], "editor.edit.delete-char");
+        s.reg(
+            vec![KeyCode::Char('x')],
+            Action::Editor(EditorAction::Window(WindowAction::Edit(
+                EditAction::RemoveChar,
+            ))),
+        );
         // s.reg(vec![KeyCode::Char('X')], "editor.edit.delete-back-char");
-        // s.reg(
-        //     vec![KeyCode::Char('d'), KeyCode::Char('d')],
-        //     "editor.edit.delete-line",
-        // );
+        s.reg(
+            vec![KeyCode::Char('d'), KeyCode::Char('d')],
+            Action::Editor(EditorAction::Window(WindowAction::Edit(
+                EditAction::RemoveLine,
+            ))),
+        );
         // s.reg(vec![KeyCode::Char('D')], "editor.edit.delete-to-line-end");
         // s.reg(
         //     vec![KeyCode::Char('r'), KeyCode::Char('r')],
@@ -177,7 +205,6 @@ pub struct InputManager {
 }
 
 impl InputManager {
-    /// CrosstermのキーイベントをアプリケーションのKeyCodeに変換する
     pub fn event_to_key(&self, evt: event::Event) -> anyhow::Result<Option<KeyCode>> {
         Ok(match evt {
             Event::Key(evt) => {
