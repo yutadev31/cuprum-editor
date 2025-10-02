@@ -103,20 +103,18 @@ impl Window {
 
     pub async fn move_to_x(&mut self, x: usize) {
         {
-            {
-                let buffer = self.buffer.lock().await;
-                let line_count = buffer.get_line_count();
-                if self.cursor.y >= line_count {
-                    return;
-                }
+            let buffer = self.buffer.lock().await;
+            let line_count = buffer.get_line_count();
+            if self.cursor.y >= line_count {
+                return;
             }
+        }
 
-            if let Some(max_x) = self.get_cursor_max_x().await {
-                if x > max_x {
-                    self.cursor.x = max_x;
-                } else {
-                    self.cursor.x = x;
-                }
+        if let Some(max_x) = self.get_cursor_max_x().await {
+            if x > max_x {
+                self.cursor.x = max_x;
+            } else {
+                self.cursor.x = x;
             }
         }
         self.sync_scroll();

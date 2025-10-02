@@ -178,7 +178,7 @@ pub struct InputManager {
 
 impl InputManager {
     /// CrosstermのキーイベントをアプリケーションのKeyCodeに変換する
-    pub fn crossterm_to_app_key(&self, evt: event::Event) -> anyhow::Result<Option<KeyCode>> {
+    pub fn event_to_key(&self, evt: event::Event) -> anyhow::Result<Option<KeyCode>> {
         Ok(match evt {
             Event::Key(evt) => {
                 let ch = match evt.code {
@@ -210,11 +210,8 @@ impl InputManager {
         })
     }
 
-    pub fn read_event_normal(
-        &mut self,
-        crossterm_key: event::Event,
-    ) -> anyhow::Result<Option<Action>> {
-        let key = self.crossterm_to_app_key(crossterm_key)?;
+    pub fn read_event_normal(&mut self, evt: event::Event) -> anyhow::Result<Option<Action>> {
+        let key = self.event_to_key(evt)?;
 
         // 500ms以上間隔が空いたらバッファをクリア
         let now = Local::now();
@@ -242,11 +239,5 @@ impl InputManager {
         } else {
             Ok(None)
         }
-    }
-
-    pub fn read_event_raw(&mut self, event: event::Event) -> anyhow::Result<Option<KeyCode>> {
-        let key = self.crossterm_to_app_key(event)?;
-
-        Ok(key)
     }
 }
