@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use tokio::sync::Mutex;
 use utils::{
-    safe_add,
     term::get_terminal_size,
     vec2::{IVec2, UVec2},
 };
