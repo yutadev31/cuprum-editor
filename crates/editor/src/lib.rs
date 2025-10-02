@@ -76,6 +76,7 @@ impl WindowManager {
 
 #[derive(Debug)]
 pub struct Editor {
+    #[allow(dead_code)]
     buffer_manager: BufferManager,
     window_manager: WindowManager,
     active_window: WindowId,
@@ -102,7 +103,7 @@ impl Editor {
         }
 
         Ok(Self {
-            buffer_manager: buffer_manager,
+            buffer_manager,
             window_manager,
             active_window: WindowId(0),
             input_manager: InputManager::default(),

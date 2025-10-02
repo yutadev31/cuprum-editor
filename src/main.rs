@@ -1,7 +1,6 @@
 mod log;
 
 use clap::Parser;
-use editor::Editor;
 
 use crate::log::init_logger;
 
