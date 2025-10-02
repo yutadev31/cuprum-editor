@@ -34,6 +34,7 @@ impl ToString for Mode {
 #[derive(Debug, Clone)]
 pub enum WindowAction {
     Cursor(CursorAction),
+    Edit(EditAction),
 }
 
 #[derive(Debug, Clone)]
@@ -46,6 +47,16 @@ pub enum CursorAction {
     MoveToEndOfLine,
     MoveToStartOfBuffer,
     MoveToEndOfBuffer,
+}
+
+#[derive(Debug, Clone)]
+pub enum EditAction {
+    RemoveChar,
+    RemoveLine,
+    OpenLineBelow,
+    OpenLineAbove,
+    InsertLineStart,
+    AppendLineEnd,
 }
 
 #[derive(Debug, Clone)]

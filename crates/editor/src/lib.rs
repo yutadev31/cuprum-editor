@@ -7,7 +7,7 @@ use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
 
 use crossterm::event::{self, Event};
 use tokio::{sync::Mutex, time::sleep};
-use utils::vec2::IVec2;
+use utils::vec2::{IVec2, UVec2};
 
 use crate::{
     action::{Action, CursorAction, EditorAction, Mode, WindowAction},
@@ -174,9 +174,9 @@ impl Editor {
                         let mut active_buffer = active_buffer.lock().await;
 
                         if ch == '\n' {
-                            active_buffer.split_line(cursor.x, cursor.y);
+                            active_buffer.split_line(cursor);
                         } else {
-                            active_buffer.insert_char(cursor.x, cursor.y, ch);
+                            active_buffer.insert_char(cursor, ch);
                         }
                     }
 
@@ -207,7 +207,7 @@ impl Editor {
                         if cursor.x == 0 {
                             active_buffer.join_lines(cursor.y - 1);
                         } else {
-                            active_buffer.remove_char(cursor.x - 1, cursor.y);
+                            active_buffer.remove_char(UVec2::new(cursor.x - 1, cursor.y));
                         }
                         line_len
                     };
@@ -225,7 +225,7 @@ impl Editor {
                 KeyCode::Delete => {
                     let active_buffer = active_window.get_buffer();
                     let mut active_buffer = active_buffer.lock().await;
-                    active_buffer.remove_char(cursor.x, cursor.y);
+                    active_buffer.remove_char(cursor);
                 }
                 KeyCode::Esc => {
                     if is_append {
