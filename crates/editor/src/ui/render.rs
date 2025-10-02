@@ -38,7 +38,7 @@ impl Renderer {
         &self,
         active_window: Arc<Mutex<Window>>,
         active_buffer: Arc<Mutex<Buffer>>,
-        mode: Mode,
+        mode: Arc<Mutex<Mode>>,
         command_buf: String,
     ) -> anyhow::Result<()> {
         let win = active_window.lock().await;
@@ -65,6 +65,7 @@ impl Renderer {
             queue!(stdout(), MoveTo(0, y as u16), Print(line))?;
         }
 
+        let mode = mode.lock().await.clone();
         if let Mode::Command = mode {
             queue!(
                 stdout(),
