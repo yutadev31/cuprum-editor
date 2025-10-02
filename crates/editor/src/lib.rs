@@ -10,7 +10,7 @@ use tokio::sync::Mutex;
 use utils::vec2::IVec2;
 
 use crate::{
-    action::{Action, EditorAction, Mode},
+    action::{Action, CursorAction, EditorAction, Mode, WindowAction},
     buffer::Buffer,
     ui::{
         commands::CommandMap,
@@ -125,6 +125,12 @@ impl Editor {
                 Action::Editor(action) => match action {
                     EditorAction::Quit => return Ok(true),
                     EditorAction::Mode(mode) => {
+                        if let Mode::Insert(true) = mode {
+                            active_window
+                                .on_action(WindowAction::Cursor(CursorAction::MoveRight))
+                                .await;
+                        }
+
                         self.mode = mode;
                     }
                     EditorAction::Buffer(action) => {
@@ -151,7 +157,7 @@ impl Editor {
         Ok(false)
     }
 
-    async fn process_insert(&mut self, event: Event) -> anyhow::Result<bool> {
+    async fn process_insert(&mut self, event: Event, is_append: bool) -> anyhow::Result<bool> {
         if let Some(key_code) = self.input_manager.read_event_raw(event)? {
             let active_window = self.get_active_window();
 
@@ -210,6 +216,12 @@ impl Editor {
                         active_buffer.remove_char(cursor.x, cursor.y);
                     }
                     KeyCode::Esc => {
+                        if is_append {
+                            active_window
+                                .on_action(WindowAction::Cursor(CursorAction::MoveLeft))
+                                .await;
+                        }
+
                         self.mode = Mode::Normal;
                     }
                     _ => {}
@@ -257,7 +269,7 @@ impl Editor {
     async fn process(&mut self, event: Event) -> anyhow::Result<bool> {
         match self.mode {
             Mode::Normal => self.process_normal(event).await,
-            Mode::Insert => self.process_insert(event).await,
+            Mode::Insert(is_append) => self.process_insert(event, is_append).await,
             Mode::Command => self.process_command(event).await,
         }
     }

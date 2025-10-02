@@ -113,7 +113,11 @@ impl Default for Keymap {
         // Modes
         s.reg(
             vec![KeyCode::Char('i')],
-            Action::Editor(EditorAction::Mode(Mode::Insert)),
+            Action::Editor(EditorAction::Mode(Mode::Insert(false))),
+        );
+        s.reg(
+            vec![KeyCode::Char('a')],
+            Action::Editor(EditorAction::Mode(Mode::Insert(true))),
         );
         s.reg(
             vec![KeyCode::Char(':')],

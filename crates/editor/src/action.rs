@@ -14,7 +14,7 @@ pub enum EditorAction {
 #[derive(Debug, Clone)]
 pub enum Mode {
     Normal,
-    Insert,
+    Insert(bool),
     Command,
 }
 
@@ -22,7 +22,8 @@ impl ToString for Mode {
     fn to_string(&self) -> String {
         match self {
             Mode::Normal => "NORMAL",
-            Mode::Insert => "INSERT",
+            Mode::Insert(false) => "INSERT",
+            Mode::Insert(true) => "INSERT (APPEND)",
             Mode::Command => "COMMAND",
         }
         .to_string()
