@@ -19,6 +19,7 @@ pub struct Window {
     mode: Arc<Mutex<Mode>>,
     cursor: UVec2,
     scroll: usize,
+    position: UVec2,
     size: UVec2,
 }
 
@@ -32,8 +33,25 @@ impl Window {
             mode,
             cursor: UVec2::default(),
             scroll: 0,
+            position: UVec2::default(),
             size: UVec2::new(term_size.x, term_size.y - 1),
         }
+    }
+
+    pub fn get_position(&self) -> UVec2 {
+        self.position
+    }
+
+    pub fn set_position(&mut self, position: UVec2) {
+        self.position = position;
+    }
+
+    pub fn get_size(&self) -> UVec2 {
+        self.size
+    }
+
+    pub fn set_size(&mut self, size: UVec2) {
+        self.size = size;
     }
 
     pub fn get_buffer(&self) -> Arc<Mutex<Buffer>> {
