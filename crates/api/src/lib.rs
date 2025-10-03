@@ -58,6 +58,7 @@ pub enum ApiRequest {
     RemoveLine(Option<BufferId>, usize),
     SplitLine(Option<BufferId>, UVec2),
     JoinLines(Option<BufferId>, usize),
+    GetPosition(Option<WindowId>),
     MoveBy(Option<WindowId>, IVec2),
     MoveToX(Option<WindowId>, Position),
     MoveToY(Option<WindowId>, Position),
@@ -67,10 +68,10 @@ pub enum ApiRequest {
 pub enum ApiResponse {
     None,
     Number(usize),
+    Vec2(UVec2),
     Char(char),
-    Line(String),
-    Lines(Vec<String>),
-    Content(String),
+    String(String),
+    VecString(Vec<String>),
 }
 
 // TODO: 通常プラグイン向けのAPI
