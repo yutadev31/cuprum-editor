@@ -1,5 +1,5 @@
 [package]
-name = "editor"
+name = "builtin"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -9,9 +9,6 @@ repository.workspace = true
 [dependencies]
 anyhow.workspace = true
 api.workspace = true
-builtin.workspace = true
-chrono.workspace = true
-crossterm.workspace = true
 utils.workspace = true
-log.workspace = true
 tokio.workspace = true
+log.workspace = true
