@@ -39,6 +39,7 @@ impl Window {
         self.position
     }
 
+    #[allow(dead_code)] // TODO
     pub fn set_position(&mut self, position: UVec2) {
         self.position = position;
     }
@@ -55,10 +56,12 @@ impl Window {
         self.buffer.clone()
     }
 
+    #[allow(dead_code)] // TODO
     pub fn get_buffer_id(&self) -> BufferId {
         self.buffer_id
     }
 
+    #[allow(dead_code)] // TODO
     pub fn get_cursor(&self) -> UVec2 {
         self.cursor
     }

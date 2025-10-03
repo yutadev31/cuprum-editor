@@ -29,10 +29,12 @@ impl EditorFile {
         Ok(())
     }
 
+    #[allow(dead_code)] // TODO
     pub fn get_path(&self) -> &Path {
         &self.path
     }
 
+    #[allow(dead_code)] // TODO
     pub fn set_path(&mut self, path: PathBuf) {
         self.path = path
     }
