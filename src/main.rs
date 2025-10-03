@@ -1,6 +1,7 @@
 mod log;
 
 use clap::Parser;
+use editor::EditorApplication;
 
 use crate::log::init_logger;
 
@@ -14,7 +15,7 @@ async fn main() -> anyhow::Result<()> {
     init_logger()?;
 
     let cli = Cli::parse();
-    editor::main(cli.files).await?;
+    EditorApplication::main(cli.files).await?;
 
     Ok(())
 }

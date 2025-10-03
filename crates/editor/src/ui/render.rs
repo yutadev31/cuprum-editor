@@ -56,7 +56,13 @@ impl Renderer {
         queue!(stdout(), cursor::MoveTo(0, 0))?;
 
         let buf = active_buffer.lock().await;
-        for (y, line) in buf.get_lines().iter().skip(scroll).take(size.y).enumerate() {
+        for (y, line) in buf
+            .get_all_lines()
+            .iter()
+            .skip(scroll)
+            .take(size.y)
+            .enumerate()
+        {
             queue!(
                 stdout(),
                 MoveTo(position.x as u16, (position.y + y) as u16),

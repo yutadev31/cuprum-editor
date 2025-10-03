@@ -51,7 +51,7 @@ impl Buffer {
         self.content.get(y).map(|line| line.chars().count())
     }
 
-    pub fn get_lines(&self) -> Vec<String> {
+    pub fn get_all_lines(&self) -> Vec<String> {
         self.content.clone()
     }
 
@@ -76,6 +76,24 @@ impl Buffer {
         }
     }
 
+    pub fn replace_char(&mut self, pos: UVec2, ch: char) -> Option<char> {
+        self.mark_dirty();
+        if let Some(line) = self.content.get(pos.y) {
+            let mut chars = line.chars().collect::<Vec<char>>();
+            let old = chars[pos.x];
+            chars[pos.x] = ch;
+            self.content[pos.y] = chars.iter().collect();
+            return Some(old);
+        }
+        None
+    }
+
+    pub fn replace_content(&mut self, content: String) -> String {
+        let old = self.content.clone();
+        self.content = content.split('\n').map(|line| line.to_string()).collect();
+        old.join("\n")
+    }
+
     pub fn remove_char(&mut self, pos: UVec2) -> Option<char> {
         self.mark_dirty();
         if let Some(line) = self.content.get_mut(pos.y) {
@@ -89,19 +107,25 @@ impl Buffer {
         None
     }
 
-    pub fn insert_line(&mut self, y: usize, content: String) {
+    pub fn insert_line(&mut self, y: usize, line: String) {
         self.mark_dirty();
-        self.content.insert(y, content);
+        self.content.insert(y, line);
     }
 
-    pub fn replace_line(&mut self, y: usize, content: String) -> Option<String> {
+    pub fn replace_line(&mut self, y: usize, line: String) -> Option<String> {
         if let Some(old_line) = self.get_line(y) {
             self.mark_dirty();
-            self.content[y] = content;
+            self.content[y] = line;
             Some(old_line)
         } else {
             None
         }
+    }
+
+    pub fn replace_all_lines(&mut self, lines: Vec<String>) -> Vec<String> {
+        let old = self.content.clone();
+        self.content = lines;
+        old
     }
 
     pub fn remove_line(&mut self, y: usize) -> Option<String> {
@@ -131,15 +155,6 @@ impl Buffer {
             self.content.remove(y + 1);
         }
     }
-
-    // pub(crate) fn on_action(&mut self, action: BufferAction) -> anyhow::Result<()> {
-    //     match action {
-    //         BufferAction::Save => {
-    //             self.save()?;
-    //         }
-    //     }
-    //     Ok(())
-    // }
 }
 
 impl Default for Buffer {

@@ -39,6 +39,7 @@ impl Window {
         self.position
     }
 
+    #[allow(dead_code)] // TODO
     pub fn set_position(&mut self, position: UVec2) {
         self.position = position;
     }
@@ -55,10 +56,12 @@ impl Window {
         self.buffer.clone()
     }
 
-    pub fn get_buf(&self) -> BufferId {
+    #[allow(dead_code)] // TODO
+    pub fn get_buffer_id(&self) -> BufferId {
         self.buffer_id
     }
 
+    #[allow(dead_code)] // TODO
     pub fn get_cursor(&self) -> UVec2 {
         self.cursor
     }
@@ -201,78 +204,4 @@ impl Window {
             }
         }
     }
-
-    pub async fn remove_char(&mut self) {
-        let cursor = self.get_render_cursor().await;
-        let mut buffer = self.buffer.lock().await;
-        buffer.remove_char(cursor);
-    }
-
-    pub async fn remove_line(&mut self) {
-        let cursor = self.get_render_cursor().await;
-        let mut buffer = self.buffer.lock().await;
-        buffer.remove_line(cursor.y);
-    }
-
-    pub async fn open_line_below(&mut self) {
-        {
-            let cursor = self.get_cursor();
-            let mut buffer = self.buffer.lock().await;
-            buffer.insert_line(cursor.y + 1, String::new());
-        }
-
-        self.move_by(IVec2::down()).await;
-
-        let mut mode = self.mode.lock().await;
-        *mode = Mode::Insert(false);
-    }
-
-    pub async fn open_line_above(&mut self) {
-        {
-            let cursor = self.get_cursor();
-            let mut buffer = self.buffer.lock().await;
-            buffer.insert_line(cursor.y, String::new());
-        }
-
-        let mut mode = self.mode.lock().await;
-        *mode = Mode::Insert(false);
-    }
-
-    pub async fn insert_line_start(&mut self) {
-        self.move_to_line_start();
-        let mut mode = self.mode.lock().await;
-        *mode = Mode::Insert(false);
-    }
-
-    pub async fn append_line_end(&mut self) {
-        {
-            let mut mode = self.mode.lock().await;
-            *mode = Mode::Insert(true);
-        }
-
-        self.move_to_line_end().await;
-    }
-
-    // pub(crate) async fn on_action(&mut self, action: WindowAction) {
-    //     match action {
-    //         WindowAction::Cursor(action) => match action {
-    //             CursorAction::MoveLeft => self.move_by(IVec2::left()).await,
-    //             CursorAction::MoveDown => self.move_by(IVec2::down()).await,
-    //             CursorAction::MoveUp => self.move_by(IVec2::up()).await,
-    //             CursorAction::MoveRight => self.move_by(IVec2::right()).await,
-    //             CursorAction::MoveToStartOfLine => self.move_to_line_start(),
-    //             CursorAction::MoveToEndOfLine => self.move_to_line_end().await,
-    //             CursorAction::MoveToStartOfBuffer => self.move_to_buffer_start(),
-    //             CursorAction::MoveToEndOfBuffer => self.move_to_buffer_end().await,
-    //         },
-    //         WindowAction::Edit(action) => match action {
-    //             EditAction::RemoveChar => self.remove_char().await,
-    //             EditAction::RemoveLine => self.remove_line().await,
-    //             EditAction::OpenLineBelow => self.open_line_below().await,
-    //             EditAction::OpenLineAbove => self.open_line_above().await,
-    //             EditAction::InsertLineStart => self.insert_line_start().await,
-    //             EditAction::AppendLineEnd => self.append_line_end().await,
-    //         },
-    //     }
-    // }
 }
