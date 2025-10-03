@@ -42,28 +42,27 @@ impl Renderer {
         mode: Arc<Mutex<Mode>>,
         command_buf: String,
     ) -> anyhow::Result<()> {
-        let win = active_window.lock().await;
+        let mut win = active_window.lock().await;
 
         let (w, h) = terminal::size()?;
+        win.set_size(UVec2::new(w.into(), (h - 1).into()));
 
-        queue!(
-            stdout(),
-            terminal::Clear(terminal::ClearType::All),
-            cursor::MoveTo(0, 0)
-        )?;
-
-        let pos = win.get_render_cursor().await;
+        let cursor = win.get_render_cursor().await;
         let scroll = win.get_scroll();
 
+        let position = win.get_position();
+        let size = win.get_size();
+
+        queue!(stdout(), cursor::MoveTo(0, 0))?;
+
         let buf = active_buffer.lock().await;
-        for (y, line) in buf
-            .get_lines()
-            .iter()
-            .skip(scroll)
-            .take((h - 1) as usize)
-            .enumerate()
-        {
-            queue!(stdout(), MoveTo(0, y as u16), Print(line))?;
+        for (y, line) in buf.get_lines().iter().skip(scroll).take(size.y).enumerate() {
+            queue!(
+                stdout(),
+                MoveTo(position.x as u16, (position.y + y) as u16),
+                Print(line),
+                Print(" ".repeat(size.x - line.len()))
+            )?;
         }
 
         let mode = mode.lock().await.clone();
@@ -72,7 +71,8 @@ impl Renderer {
                 stdout(),
                 cursor::MoveTo(0, h - 1),
                 Print(':'),
-                Print(command_buf)
+                Print(&command_buf),
+                Print(" ".repeat(w as usize - command_buf.len() - 1))
             )?;
         } else {
             let status = format!(" {} ", mode.to_string());
@@ -87,8 +87,14 @@ impl Renderer {
                 style::ResetColor
             )?;
 
-            let pos = UVec2::new(pos.x, pos.y.saturating_sub(scroll));
-            queue!(stdout(), cursor::MoveTo(pos.x as u16, pos.y as u16))?;
+            let cursor = UVec2::new(cursor.x, cursor.y.saturating_sub(scroll));
+            queue!(
+                stdout(),
+                cursor::MoveTo(
+                    (position.x + cursor.x) as u16,
+                    (position.y + cursor.y) as u16
+                )
+            )?;
         }
 
         if let Mode::Normal = mode {
