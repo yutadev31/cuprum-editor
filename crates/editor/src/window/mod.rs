@@ -1,16 +1,13 @@
 use std::sync::Arc;
 
+use api::Mode;
 use tokio::sync::Mutex;
 use utils::{
     term::get_terminal_size,
     vec2::{IVec2, UVec2},
 };
 
-use crate::{
-    BufferId,
-    action::{CursorAction, EditAction, Mode, WindowAction},
-    buffer::Buffer,
-};
+use crate::{BufferId, buffer::Buffer};
 
 #[derive(Debug)]
 pub struct Window {
@@ -256,26 +253,26 @@ impl Window {
         self.move_to_line_end().await;
     }
 
-    pub(crate) async fn on_action(&mut self, action: WindowAction) {
-        match action {
-            WindowAction::Cursor(action) => match action {
-                CursorAction::MoveLeft => self.move_by(IVec2::left()).await,
-                CursorAction::MoveDown => self.move_by(IVec2::down()).await,
-                CursorAction::MoveUp => self.move_by(IVec2::up()).await,
-                CursorAction::MoveRight => self.move_by(IVec2::right()).await,
-                CursorAction::MoveToStartOfLine => self.move_to_line_start(),
-                CursorAction::MoveToEndOfLine => self.move_to_line_end().await,
-                CursorAction::MoveToStartOfBuffer => self.move_to_buffer_start(),
-                CursorAction::MoveToEndOfBuffer => self.move_to_buffer_end().await,
-            },
-            WindowAction::Edit(action) => match action {
-                EditAction::RemoveChar => self.remove_char().await,
-                EditAction::RemoveLine => self.remove_line().await,
-                EditAction::OpenLineBelow => self.open_line_below().await,
-                EditAction::OpenLineAbove => self.open_line_above().await,
-                EditAction::InsertLineStart => self.insert_line_start().await,
-                EditAction::AppendLineEnd => self.append_line_end().await,
-            },
-        }
-    }
+    // pub(crate) async fn on_action(&mut self, action: WindowAction) {
+    //     match action {
+    //         WindowAction::Cursor(action) => match action {
+    //             CursorAction::MoveLeft => self.move_by(IVec2::left()).await,
+    //             CursorAction::MoveDown => self.move_by(IVec2::down()).await,
+    //             CursorAction::MoveUp => self.move_by(IVec2::up()).await,
+    //             CursorAction::MoveRight => self.move_by(IVec2::right()).await,
+    //             CursorAction::MoveToStartOfLine => self.move_to_line_start(),
+    //             CursorAction::MoveToEndOfLine => self.move_to_line_end().await,
+    //             CursorAction::MoveToStartOfBuffer => self.move_to_buffer_start(),
+    //             CursorAction::MoveToEndOfBuffer => self.move_to_buffer_end().await,
+    //         },
+    //         WindowAction::Edit(action) => match action {
+    //             EditAction::RemoveChar => self.remove_char().await,
+    //             EditAction::RemoveLine => self.remove_line().await,
+    //             EditAction::OpenLineBelow => self.open_line_below().await,
+    //             EditAction::OpenLineAbove => self.open_line_above().await,
+    //             EditAction::InsertLineStart => self.insert_line_start().await,
+    //             EditAction::AppendLineEnd => self.append_line_end().await,
+    //         },
+    //     }
+    // }
 }

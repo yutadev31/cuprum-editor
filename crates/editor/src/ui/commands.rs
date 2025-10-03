@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use crate::action::{Action, BufferAction, EditorAction};
+use builtin::BuiltinAction;
+
+use crate::action::Action;
 
 #[derive(Debug)]
 pub struct CommandMap {
@@ -24,11 +26,8 @@ impl Default for CommandMap {
             map: HashMap::default(),
         };
 
-        s.reg("q", Action::Editor(EditorAction::Quit));
-        s.reg(
-            "w",
-            Action::Editor(EditorAction::Buffer(BufferAction::Save)),
-        );
+        s.reg("q", Action::Quit);
+        s.reg("w", Action::Builtin(BuiltinAction::Save));
 
         s
     }

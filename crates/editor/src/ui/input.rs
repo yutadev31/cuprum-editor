@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 
+use api::{Mode, Position};
+use builtin::BuiltinAction;
 use chrono::{DateTime, Duration, Local};
 use crossterm::event::{self, Event, KeyModifiers};
+use utils::vec2::IVec2;
 
-use crate::action::{
-    Action, BufferAction, CursorAction, EditAction, EditorAction, Mode, WindowAction,
-};
+use crate::action::Action;
 
 #[derive(Debug, Hash, PartialEq, Eq)]
 pub enum KeyCode {
@@ -47,51 +48,35 @@ impl Default for Keymap {
         // Cursor movement
         s.reg(
             vec![KeyCode::Char('h')],
-            Action::Editor(EditorAction::Window(WindowAction::Cursor(
-                CursorAction::MoveLeft,
-            ))),
+            Action::Builtin(BuiltinAction::MoveBy(IVec2::left())),
         );
         s.reg(
             vec![KeyCode::Char('j')],
-            Action::Editor(EditorAction::Window(WindowAction::Cursor(
-                CursorAction::MoveDown,
-            ))),
+            Action::Builtin(BuiltinAction::MoveBy(IVec2::down())),
         );
         s.reg(
             vec![KeyCode::Char('k')],
-            Action::Editor(EditorAction::Window(WindowAction::Cursor(
-                CursorAction::MoveUp,
-            ))),
+            Action::Builtin(BuiltinAction::MoveBy(IVec2::up())),
         );
         s.reg(
             vec![KeyCode::Char('l')],
-            Action::Editor(EditorAction::Window(WindowAction::Cursor(
-                CursorAction::MoveRight,
-            ))),
+            Action::Builtin(BuiltinAction::MoveBy(IVec2::right())),
         );
         s.reg(
             vec![KeyCode::Char('0')],
-            Action::Editor(EditorAction::Window(WindowAction::Cursor(
-                CursorAction::MoveToStartOfLine,
-            ))),
+            Action::Builtin(BuiltinAction::MoveToX(Position::Start)),
         );
         s.reg(
             vec![KeyCode::Char('$')],
-            Action::Editor(EditorAction::Window(WindowAction::Cursor(
-                CursorAction::MoveToEndOfLine,
-            ))),
+            Action::Builtin(BuiltinAction::MoveToX(Position::End)),
         );
         s.reg(
             vec![KeyCode::Char('g'), KeyCode::Char('g')],
-            Action::Editor(EditorAction::Window(WindowAction::Cursor(
-                CursorAction::MoveToStartOfBuffer,
-            ))),
+            Action::Builtin(BuiltinAction::MoveToY(Position::Start)),
         );
         s.reg(
             vec![KeyCode::Char('G')],
-            Action::Editor(EditorAction::Window(WindowAction::Cursor(
-                CursorAction::MoveToEndOfBuffer,
-            ))),
+            Action::Builtin(BuiltinAction::MoveToY(Position::End)),
         );
         // s.reg(
         //     vec![KeyCode::Char('w')],
@@ -115,54 +100,42 @@ impl Default for Keymap {
         // Modes
         s.reg(
             vec![KeyCode::Char('i')],
-            Action::Editor(EditorAction::Mode(Mode::Insert(false))),
+            Action::Builtin(BuiltinAction::ChangeMode(Mode::Insert(false))),
         );
         s.reg(
             vec![KeyCode::Char('a')],
-            Action::Editor(EditorAction::Mode(Mode::Insert(true))),
+            Action::Builtin(BuiltinAction::ChangeMode(Mode::Insert(true))),
         );
         s.reg(
             vec![KeyCode::Char('I')],
-            Action::Editor(EditorAction::Window(WindowAction::Edit(
-                EditAction::InsertLineStart,
-            ))),
+            Action::Builtin(BuiltinAction::InsertLineStart),
         );
         s.reg(
             vec![KeyCode::Char('A')],
-            Action::Editor(EditorAction::Window(WindowAction::Edit(
-                EditAction::AppendLineEnd,
-            ))),
+            Action::Builtin(BuiltinAction::AppendLineEnd),
         );
         s.reg(
             vec![KeyCode::Char(':')],
-            Action::Editor(EditorAction::Mode(Mode::Command)),
+            Action::Builtin(BuiltinAction::ChangeMode(Mode::Command)),
         );
         s.reg(
             vec![KeyCode::Char('o')],
-            Action::Editor(EditorAction::Window(WindowAction::Edit(
-                EditAction::OpenLineBelow,
-            ))),
+            Action::Builtin(BuiltinAction::OpenLineBelow),
         );
         s.reg(
             vec![KeyCode::Char('O')],
-            Action::Editor(EditorAction::Window(WindowAction::Edit(
-                EditAction::OpenLineAbove,
-            ))),
+            Action::Builtin(BuiltinAction::OpenLineAbove),
         );
 
         // Editing
         s.reg(
             vec![KeyCode::Char('x')],
-            Action::Editor(EditorAction::Window(WindowAction::Edit(
-                EditAction::RemoveChar,
-            ))),
+            Action::Builtin(BuiltinAction::RemoveChar),
         );
         // s.reg(vec![KeyCode::Char('X')], "editor.edit.delete-back-char");
         s.reg(
             vec![KeyCode::Char('d'), KeyCode::Char('d')],
-            Action::Editor(EditorAction::Window(WindowAction::Edit(
-                EditAction::RemoveLine,
-            ))),
+            Action::Builtin(BuiltinAction::RemoveLine),
         );
         // s.reg(vec![KeyCode::Char('D')], "editor.edit.delete-to-line-end");
         // s.reg(
@@ -186,12 +159,6 @@ impl Default for Keymap {
         // s.reg(vec![KeyCode::Char(':')], "editor.ui.command");
         // s.reg(vec![KeyCode::Char('/')], "editor.ui.search");
         // s.reg(vec![KeyCode::Char('%')], "editor.ui.replace");
-
-        // Leader key
-        s.reg(
-            vec![KeyCode::Char(' '), KeyCode::Char('w')],
-            Action::Editor(EditorAction::Buffer(BufferAction::Save)),
-        );
 
         s
     }

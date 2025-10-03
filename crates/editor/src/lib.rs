@@ -5,12 +5,14 @@ pub mod window;
 
 use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
 
+use api::{ApiRequest, ApiResponse, BufferId, Mode, Position, WindowId};
+use builtin::Builtin;
 use crossterm::event::{self, Event};
 use tokio::{sync::Mutex, time::sleep};
 use utils::vec2::{IVec2, UVec2};
 
 use crate::{
-    action::{Action, CursorAction, EditorAction, Mode, WindowAction},
+    action::Action,
     buffer::Buffer,
     ui::{
         commands::CommandMap,
@@ -19,9 +21,6 @@ use crate::{
     },
     window::Window,
 };
-
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
-pub struct BufferId(pub usize);
 
 #[derive(Debug, Default)]
 pub struct BufferManager {
@@ -46,9 +45,6 @@ impl BufferManager {
         self.buffers.get(&id).cloned()
     }
 }
-
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
-pub struct WindowId(pub usize);
 
 #[derive(Debug, Default)]
 pub struct WindowManager {
@@ -84,6 +80,7 @@ pub struct Editor {
     mode: Arc<Mutex<Mode>>,
     command_buf: String,
     command_map: CommandMap,
+    builtin: Builtin,
     pub is_quit: bool,
 }
 
@@ -111,6 +108,7 @@ impl Editor {
             mode,
             command_buf: String::new(),
             command_map: CommandMap::default(),
+            builtin: Builtin::default(),
             is_quit: false,
         })
     }
@@ -125,30 +123,9 @@ impl Editor {
     }
 
     async fn on_action(&mut self, action: Action) -> anyhow::Result<bool> {
-        if let Some(active_window) = self.get_active_window() {
-            let mut active_window = active_window.lock().await;
-            match action {
-                Action::Editor(action) => match action {
-                    EditorAction::Quit => return Ok(true),
-                    EditorAction::Mode(mode) => {
-                        self.set_mode(mode.clone()).await;
-
-                        if let Mode::Insert(true) = mode {
-                            active_window
-                                .on_action(WindowAction::Cursor(CursorAction::MoveRight))
-                                .await;
-                        }
-                    }
-                    EditorAction::Buffer(action) => {
-                        let active_buffer = active_window.get_buffer();
-                        let mut active_buffer = active_buffer.lock().await;
-                        active_buffer.on_action(action)?;
-                    }
-                    EditorAction::Window(action) => {
-                        active_window.on_action(action).await;
-                    }
-                },
-            }
+        match action {
+            Action::Quit => return Ok(true),
+            Action::Builtin(action) => self.builtin.on_action(action).await?,
         }
         Ok(false)
     }
@@ -229,9 +206,10 @@ impl Editor {
                 }
                 KeyCode::Esc => {
                     if is_append {
-                        active_window
-                            .on_action(WindowAction::Cursor(CursorAction::MoveLeft))
-                            .await;
+                        // TODO
+                        // active_window
+                        //     .on_action(WindowAction::Cursor(CursorAction::MoveLeft))
+                        //     .await;
                     }
 
                     self.set_mode(Mode::Normal).await;
@@ -288,6 +266,154 @@ impl Editor {
         }
     }
 
+    async fn process_request(&mut self, request: ApiRequest) -> Option<ApiResponse> {
+        match request {
+            ApiRequest::ChangeMode(mode) => {
+                self.set_mode(mode).await;
+                Some(ApiResponse::None)
+            }
+            // ApiRequest::OpenFile(path) => {
+            //     todo!()
+            // }
+            // TODO: Pathを使った処理の実装
+            ApiRequest::SaveBuffer(buf, _path) => {
+                let id = if let Some(buf) = buf {
+                    Some(buf)
+                } else {
+                    if let Some(active) = self.get_active_window() {
+                        let win = active.lock().await;
+                        Some(win.get_buf())
+                    } else {
+                        None
+                    }
+                };
+
+                if let Some(id) = id
+                    && let Some(buf) = self.buffer_manager.get_buffer(id)
+                {
+                    let mut buf = buf.lock().await;
+                    buf.save().ok()?;
+                }
+
+                Some(ApiResponse::None)
+            }
+            // ApiRequest::GetLineCount(buf) => {
+            //     todo!()
+            // }
+            // ApiRequest::GetLineLength(buf, y) => {
+            //     todo!()
+            // }
+            // ApiRequest::GetChar(buf, pos) => {
+            //     todo!()
+            // }
+            // ApiRequest::GetLine(buf, y) => {
+            //     todo!()
+            // }
+            // ApiRequest::GetAllLines(buf) => {
+            //     todo!()
+            // }
+            // ApiRequest::GetContent(buf) => {
+            //     todo!()
+            // }
+            // ApiRequest::InsertChar(buf, pos, ch) => {
+            //     todo!()
+            // }
+            // ApiRequest::InsertLine(buf, y, line) => {
+            //     todo!()
+            // }
+            // ApiRequest::ReplaceChar(buf, pos, ch) => {
+            //     todo!()
+            // }
+            // ApiRequest::ReplaceLine(buf, y, line) => {
+            //     todo!()
+            // }
+            // ApiRequest::ReplaceAllLines(buf, lines) => {
+            //     todo!()
+            // }
+            // ApiRequest::ReplaceContent(buf, content) => {
+            //     todo!()
+            // }
+            // ApiRequest::RemoveChar(buf, pos) => {
+            //     todo!()
+            // }
+            // ApiRequest::RemoveLine(buf, y) => {
+            //     todo!()
+            // }
+            // ApiRequest::SplitLine(buf, pos) => {
+            //     todo!()
+            // }
+            // ApiRequest::JoinLines(buf, y) => {
+            //     todo!()
+            // }
+            ApiRequest::MoveBy(win, offset) => {
+                let win = if let Some(win) = win {
+                    self.window_manager.get_window(win)
+                } else {
+                    self.get_active_window()
+                };
+
+                if let Some(win) = win {
+                    let mut win = win.lock().await;
+                    win.move_by(offset).await;
+                }
+
+                Some(ApiResponse::None)
+            }
+            ApiRequest::MoveToX(win, pos) => {
+                let win = if let Some(win) = win {
+                    self.window_manager.get_window(win)
+                } else {
+                    self.get_active_window()
+                };
+
+                if let Some(win) = win {
+                    let mut win = win.lock().await;
+
+                    match pos {
+                        Position::Number(x) => win.move_to_x(x).await,
+                        Position::Start => win.move_to_line_start(),
+                        Position::End => win.move_to_line_end().await,
+                    }
+                }
+
+                Some(ApiResponse::None)
+            }
+            ApiRequest::MoveToY(win, pos) => {
+                let win = if let Some(win) = win {
+                    self.window_manager.get_window(win)
+                } else {
+                    self.get_active_window()
+                };
+
+                if let Some(win) = win {
+                    let mut win = win.lock().await;
+
+                    match pos {
+                        Position::Number(y) => win.move_to_y(y).await,
+                        Position::Start => win.move_to_buffer_start(),
+                        Position::End => win.move_to_buffer_end().await,
+                    }
+                }
+
+                Some(ApiResponse::None)
+            }
+            _ => None,
+        }
+    }
+
+    pub async fn run_request(&mut self) {
+        let messages = self.builtin.api.get_messages();
+        for (notify, response, request) in messages {
+            log::debug!("run_request: {:?}", request);
+            let res = self.process_request(request).await;
+
+            let mut responses = response.lock().await;
+            *responses = res;
+
+            notify.notify_one();
+        }
+    }
+
     pub async fn run(&mut self, event: Event) {
         match self.process(event).await {
             Ok(is_quit) => {
@@ -310,10 +436,12 @@ pub async fn main(files: Vec<String>) -> anyhow::Result<()> {
         let renderer = Renderer::default();
         renderer.init_screen().ok();
         loop {
-            let editor = editor1.lock().await;
+            let mut editor = editor1.lock().await;
             if editor.is_quit {
                 break;
             }
+
+            editor.run_request().await;
 
             let active_window = editor.get_active_window();
             if let Some(win) = active_window {

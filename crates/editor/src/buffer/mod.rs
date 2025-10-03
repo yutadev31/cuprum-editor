@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use utils::vec2::UVec2;
 
-use crate::{action::BufferAction, buffer::file::EditorFile};
+use crate::buffer::file::EditorFile;
 
 #[derive(Debug)]
 pub struct Buffer {
@@ -132,14 +132,14 @@ impl Buffer {
         }
     }
 
-    pub(crate) fn on_action(&mut self, action: BufferAction) -> anyhow::Result<()> {
-        match action {
-            BufferAction::Save => {
-                self.save()?;
-            }
-        }
-        Ok(())
-    }
+    // pub(crate) fn on_action(&mut self, action: BufferAction) -> anyhow::Result<()> {
+    //     match action {
+    //         BufferAction::Save => {
+    //             self.save()?;
+    //         }
+    //     }
+    //     Ok(())
+    // }
 }
 
 impl Default for Buffer {

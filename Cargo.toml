@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/editor", "crates/utils"]
+members = ["crates/api", "crates/builtin", "crates/editor", "crates/utils"]
 
 [workspace.package]
 version = "0.1.0"
@@ -18,6 +18,8 @@ fern = "0.7.1"
 log = "0.4.28"
 tokio = { version = "1.47.1", features = ["full"] }
 
+api.path = "crates/api"
+builtin.path = "crates/builtin"
 editor.path = "crates/editor"
 utils.path = "crates/utils"
 
