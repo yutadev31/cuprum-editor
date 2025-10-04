@@ -375,6 +375,15 @@ impl EditorApiHandler {
                     ApiResponse::None
                 }
             }
+            ApiRequest::GetVisualStart(win) => {
+                if let Some(win) = get_window(state, win).await {
+                    let win = win.lock().await;
+                    let cursor = win.get_visual_start().await;
+                    ApiResponse::Vec2(cursor)
+                } else {
+                    ApiResponse::None
+                }
+            }
             ApiRequest::MoveBy(win, offset) => {
                 if let Some(win) = get_window(state, win).await {
                     let mut win = win.lock().await;

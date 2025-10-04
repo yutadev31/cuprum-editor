@@ -62,6 +62,7 @@ pub enum ApiRequest {
     SplitLine(Option<BufferId>, UVec2),
     JoinLines(Option<BufferId>, usize),
     GetPosition(Option<WindowId>),
+    GetVisualStart(Option<WindowId>),
     MoveBy(Option<WindowId>, IVec2),
     MoveToX(Option<WindowId>, Position),
     MoveToY(Option<WindowId>, Position),
@@ -327,6 +328,18 @@ impl<T: CuprumApiProvider> CuprumApi<T> {
         if let ApiResponse::Vec2(pos) = self
             .provider
             .send_message(ApiRequest::GetPosition(win))
+            .await?
+        {
+            Ok(pos)
+        } else {
+            Err(anyhow!("mismatched types"))
+        }
+    }
+
+    pub async fn get_visual_start(&mut self, win: Option<WindowId>) -> anyhow::Result<UVec2> {
+        if let ApiResponse::Vec2(pos) = self
+            .provider
+            .send_message(ApiRequest::GetVisualStart(win))
             .await?
         {
             Ok(pos)

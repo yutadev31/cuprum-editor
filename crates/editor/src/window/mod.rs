@@ -79,6 +79,10 @@ impl Window {
         self.cursor
     }
 
+    pub async fn get_visual_start(&self) -> UVec2 {
+        self.visual_start
+    }
+
     pub async fn get_cursor_max_x(&self) -> Option<usize> {
         let buffer = self.buffer.lock().await;
         if let Some(line_len) = buffer.get_line_length(self.cursor.y) {
