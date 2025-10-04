@@ -53,11 +53,20 @@ impl EditorState {
     }
 
     pub async fn set_mode(&mut self, mode: Mode) {
-        if let Mode::Insert(true) = mode
-            && let Some(win) = self.get_active_window()
-        {
-            let mut win = win.lock().await;
-            win.move_by(IVec2::right()).await;
+        match mode {
+            Mode::Insert(true) => {
+                if let Some(win) = self.get_active_window() {
+                    let mut win = win.lock().await;
+                    win.move_by(IVec2::right()).await;
+                }
+            }
+            Mode::Visual => {
+                if let Some(win) = self.get_active_window() {
+                    let mut win = win.lock().await;
+                    win.start_visual().await;
+                }
+            }
+            _ => {}
         }
 
         let mut mutex_mode = self.mode.lock().await;

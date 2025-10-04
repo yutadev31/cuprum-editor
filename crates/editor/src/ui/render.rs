@@ -7,7 +7,7 @@ use api::Mode;
 use crossterm::{
     cursor::{self, MoveTo},
     execute, queue,
-    style::{self, Print},
+    style::{self, Color, Print, ResetColor, SetBackgroundColor},
     terminal::{self, disable_raw_mode, enable_raw_mode},
 };
 use tokio::sync::Mutex;
@@ -48,13 +48,21 @@ impl Renderer {
         win.set_size(UVec2::new(w.into(), (h - 1).into()));
 
         let cursor = win.get_render_cursor().await;
+        let visual_start = win.get_visual_start().await;
         let scroll = win.get_scroll();
+
+        let (left, right) = if cursor < visual_start {
+            (cursor + UVec2::new(1, 0), visual_start + UVec2::new(1, 0))
+        } else {
+            (visual_start, cursor)
+        };
 
         let position = win.get_position();
         let size = win.get_size();
 
         queue!(stdout(), cursor::MoveTo(0, 0))?;
 
+        let mode = mode.lock().await.clone();
         let buf = active_buffer.lock().await;
         for (y, line) in buf
             .get_all_lines()
@@ -63,15 +71,70 @@ impl Renderer {
             .take(size.y)
             .enumerate()
         {
-            queue!(
-                stdout(),
-                MoveTo(position.x as u16, (position.y + y) as u16),
-                Print(line),
-                Print(" ".repeat(size.x - line.len()))
-            )?;
+            let line_y = scroll + y;
+            if let Mode::Visual = mode {
+                if left.y == line_y && right.y == line_y {
+                    let (line_left, line_right) = line.split_at(left.x);
+                    let (line_center, line_right) = line_right.split_at(right.x - left.x);
+                    queue!(
+                        stdout(),
+                        MoveTo(position.x as u16, (position.y + y) as u16),
+                        Print(line_left),
+                        SetBackgroundColor(Color::Blue),
+                        Print(line_center),
+                        ResetColor,
+                        Print(line_right),
+                        Print(" ".repeat(size.x - line.len()))
+                    )?;
+                } else if left.y == line_y && line.len() != 0 {
+                    let (line_left, line_right) = line.split_at(left.x);
+                    queue!(
+                        stdout(),
+                        MoveTo(position.x as u16, (position.y + y) as u16),
+                        Print(line_left),
+                        SetBackgroundColor(Color::Blue),
+                        Print(line_right),
+                        ResetColor,
+                        Print(" ".repeat(size.x - line.len()))
+                    )?;
+                } else if right.y == line_y {
+                    let (line_left, line_right) = line.split_at(right.x);
+                    queue!(
+                        stdout(),
+                        MoveTo(position.x as u16, (position.y + y) as u16),
+                        SetBackgroundColor(Color::Blue),
+                        Print(line_left),
+                        ResetColor,
+                        Print(line_right),
+                        Print(" ".repeat(size.x - line.len()))
+                    )?;
+                } else if left.y < line_y && right.y > line_y {
+                    queue!(
+                        stdout(),
+                        MoveTo(position.x as u16, (position.y + y) as u16),
+                        SetBackgroundColor(Color::Blue),
+                        Print(line),
+                        ResetColor,
+                        Print(" ".repeat(size.x - line.len()))
+                    )?;
+                } else {
+                    queue!(
+                        stdout(),
+                        MoveTo(position.x as u16, (position.y + y) as u16),
+                        Print(line),
+                        Print(" ".repeat(size.x - line.len()))
+                    )?;
+                }
+            } else {
+                queue!(
+                    stdout(),
+                    MoveTo(position.x as u16, (position.y + y) as u16),
+                    Print(line),
+                    Print(" ".repeat(size.x - line.len()))
+                )?;
+            }
         }
 
-        let mode = mode.lock().await.clone();
         if let Mode::Command = mode {
             queue!(
                 stdout(),
@@ -103,7 +166,7 @@ impl Renderer {
             )?;
         }
 
-        if let Mode::Normal = mode {
+        if let Mode::Normal | Mode::Visual = mode {
             queue!(stdout(), cursor::SetCursorStyle::SteadyBlock)?;
         } else {
             queue!(stdout(), cursor::SetCursorStyle::SteadyBar)?;
