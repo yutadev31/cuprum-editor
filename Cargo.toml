@@ -17,6 +17,7 @@ crossterm = "0.29.0"
 fern = "0.7.1"
 log = "0.4.28"
 tokio = { version = "1.47.1", features = ["full"] }
+async-trait = "0.1.89"
 
 api.path = "crates/api"
 builtin.path = "crates/builtin"

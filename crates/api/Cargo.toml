@@ -7,4 +7,6 @@ authors.workspace = true
 repository.workspace = true
 
 [dependencies]
+anyhow.workspace = true
 utils.workspace = true
+async-trait.workspace = true
