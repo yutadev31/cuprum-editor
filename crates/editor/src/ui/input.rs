@@ -37,10 +37,8 @@ impl Keymap {
     pub fn get(&self, key: &Key) -> Option<&Action> {
         self.map.get(key)
     }
-}
 
-impl Default for Keymap {
-    fn default() -> Self {
+    pub fn normal_default() -> Self {
         let mut s = Self {
             map: HashMap::default(),
         };
@@ -126,6 +124,10 @@ impl Default for Keymap {
             vec![KeyCode::Char('O')],
             Action::Builtin(BuiltinAction::OpenLineAbove),
         );
+        s.reg(
+            vec![KeyCode::Char('v')],
+            Action::Builtin(BuiltinAction::ChangeMode(Mode::Visual)),
+        );
 
         // Editing
         s.reg(
@@ -151,10 +153,6 @@ impl Default for Keymap {
         // );
         // s.reg(vec![KeyCode::Char('Y')], "editor.edit.yank-to-line-end");
 
-        // Undo/Redo
-        // s.reg(vec![KeyCode::Char('u')], "editor.edit.undo");
-        // s.reg(vec![KeyCode::Ctrl('r')], "editor.edit.redo");
-
         // UI
         // s.reg(vec![KeyCode::Char(':')], "editor.ui.command");
         // s.reg(vec![KeyCode::Char('/')], "editor.ui.search");
@@ -162,11 +160,105 @@ impl Default for Keymap {
 
         s
     }
+
+    pub fn visual_default() -> Self {
+        let mut s = Self {
+            map: HashMap::default(),
+        };
+
+        // Cursor movement
+        s.reg(
+            vec![KeyCode::Char('h')],
+            Action::Builtin(BuiltinAction::MoveBy(IVec2::left())),
+        );
+        s.reg(
+            vec![KeyCode::Char('j')],
+            Action::Builtin(BuiltinAction::MoveBy(IVec2::down())),
+        );
+        s.reg(
+            vec![KeyCode::Char('k')],
+            Action::Builtin(BuiltinAction::MoveBy(IVec2::up())),
+        );
+        s.reg(
+            vec![KeyCode::Char('l')],
+            Action::Builtin(BuiltinAction::MoveBy(IVec2::right())),
+        );
+        s.reg(
+            vec![KeyCode::Char('0')],
+            Action::Builtin(BuiltinAction::MoveToX(Position::Start)),
+        );
+        s.reg(
+            vec![KeyCode::Char('$')],
+            Action::Builtin(BuiltinAction::MoveToX(Position::End)),
+        );
+        s.reg(
+            vec![KeyCode::Char('g'), KeyCode::Char('g')],
+            Action::Builtin(BuiltinAction::MoveToY(Position::Start)),
+        );
+        s.reg(
+            vec![KeyCode::Char('G')],
+            Action::Builtin(BuiltinAction::MoveToY(Position::End)),
+        );
+        // s.reg(
+        //     vec![KeyCode::Char('w')],
+        //     Action::Editor(EditorAction::Window(WindowAction::Cursor(
+        //         CursorAction::MoveToNextWord,
+        //     ))),
+        // );
+        // s.reg(
+        //     vec![KeyCode::Char('b')],
+        //     Action::Editor(EditorAction::Window(WindowAction::Cursor(
+        //         CursorAction::MoveToPrevWord,
+        //     ))),
+        // );
+        // s.reg(
+        //     vec![KeyCode::Char('e')],
+        //     Action::Editor(EditorAction::Window(WindowAction::Cursor(
+        //         CursorAction::MoveToWordEnd,
+        //     ))),
+        // );
+
+        // Modes
+        s.reg(
+            vec![KeyCode::Esc],
+            Action::Builtin(BuiltinAction::ChangeMode(Mode::Normal)),
+        );
+
+        // Editing
+        s.reg(
+            vec![KeyCode::Char('x')],
+            Action::Builtin(BuiltinAction::RemoveSelection),
+        );
+        s.reg(
+            vec![KeyCode::Char('d')],
+            Action::Builtin(BuiltinAction::RemoveSelection),
+        );
+        // s.reg(vec![KeyCode::Char('D')], "editor.edit.delete-to-line-end");
+        // s.reg(
+        //     vec![KeyCode::Char('r'), KeyCode::Char('r')],
+        //     "editor.edit.replace-char",
+        // );
+        // s.reg(vec![KeyCode::Char('R')], "editor.edit.replace-mode");
+        // s.reg(vec![KeyCode::Char('p')], "editor.edit.paste-after");
+        // s.reg(vec![KeyCode::Char('P')], "editor.edit.paste-before");
+        // s.reg(
+        //     vec![KeyCode::Char('y'), KeyCode::Char('y')],
+        //     "editor.edit.yank-line",
+        // );
+        // s.reg(vec![KeyCode::Char('Y')], "editor.edit.yank-to-line-end");
+
+        // Undo/Redo
+        // s.reg(vec![KeyCode::Char('u')], "editor.edit.undo");
+        // s.reg(vec![KeyCode::Ctrl('r')], "editor.edit.redo");
+
+        s
+    }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct InputManager {
-    keymap: Keymap,
+    normal_keymap: Keymap,
+    visual_keymap: Keymap,
     key_buffers: Key,
     last_time: Option<DateTime<Local>>,
 }
@@ -226,12 +318,54 @@ impl InputManager {
         }
 
         // バッファが登録されているアクションにマッチするか確認
-        if let Some(action) = self.keymap.get(&self.key_buffers) {
+        if let Some(action) = self.normal_keymap.get(&self.key_buffers) {
             self.key_buffers = Vec::default();
             self.last_time = None;
             Ok(Some(action.clone()))
         } else {
             Ok(None)
+        }
+    }
+
+    pub fn read_event_visual(&mut self, evt: event::Event) -> anyhow::Result<Option<Action>> {
+        let key = self.event_to_key(evt)?;
+
+        // 500ms以上間隔が空いたらバッファをクリア
+        let now = Local::now();
+        if let Some(last_time) = self.last_time {
+            let duration: Duration = now - last_time;
+            if duration.num_milliseconds() > 500 {
+                self.key_buffers = Vec::default();
+                self.last_time = None;
+            }
+        }
+
+        // キーが押されたらバッファに追加
+        if let Some(code) = key {
+            self.key_buffers.push(code);
+            self.last_time = Some(now);
+        } else {
+            return Ok(None);
+        }
+
+        // バッファが登録されているアクションにマッチするか確認
+        if let Some(action) = self.visual_keymap.get(&self.key_buffers) {
+            self.key_buffers = Vec::default();
+            self.last_time = None;
+            Ok(Some(action.clone()))
+        } else {
+            Ok(None)
+        }
+    }
+}
+
+impl Default for InputManager {
+    fn default() -> Self {
+        Self {
+            normal_keymap: Keymap::normal_default(),
+            visual_keymap: Keymap::visual_default(),
+            key_buffers: Vec::default(),
+            last_time: None,
         }
     }
 }

@@ -15,6 +15,7 @@ pub struct Window {
     buffer: Arc<Mutex<Buffer>>,
     mode: Arc<Mutex<Mode>>,
     cursor: UVec2,
+    visual_start: UVec2,
     scroll: usize,
     position: UVec2,
     size: UVec2,
@@ -29,6 +30,7 @@ impl Window {
             buffer,
             mode,
             cursor: UVec2::default(),
+            visual_start: UVec2::default(),
             scroll: 0,
             position: UVec2::default(),
             size: UVec2::new(term_size.x, term_size.y - 1),
@@ -75,6 +77,10 @@ impl Window {
             }
         }
         self.cursor
+    }
+
+    pub async fn get_visual_start(&self) -> UVec2 {
+        self.visual_start
     }
 
     pub async fn get_cursor_max_x(&self) -> Option<usize> {

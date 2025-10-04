@@ -6,7 +6,7 @@ mod window;
 use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
 
 use api::{ApiRequest, ApiResponse, BufferId, Mode, Position, WindowId};
-use builtin::Builtin;
+use builtin::{Builtin, BuiltinApiProvider};
 use crossterm::event::{self, Event};
 use tokio::{
     sync::{Mutex, MutexGuard},
@@ -172,7 +172,7 @@ impl EditorApiHandler {
         Self { state }
     }
 
-    async fn process(&mut self, request: ApiRequest) -> Option<ApiResponse> {
+    async fn process(&mut self, request: ApiRequest) -> ApiResponse {
         let mut state = self.state.lock().await;
 
         async fn get_window(
@@ -205,75 +205,75 @@ impl EditorApiHandler {
         match request {
             ApiRequest::ChangeMode(mode) => {
                 state.set_mode(mode).await;
-                Some(ApiResponse::None)
+                ApiResponse::None
             }
-            // ApiRequest::OpenFile(path) => {
-            //     todo!()
-            // }
+            ApiRequest::OpenFile(_path) => {
+                todo!()
+            }
             // TODO: Pathを使った処理の実装
             ApiRequest::SaveBuffer(buf, _path) => {
                 if let Some(buf) = get_buffer(state, buf).await {
                     let mut buf = buf.lock().await;
-                    buf.save().ok()?;
+                    buf.save().ok();
                 }
 
-                Some(ApiResponse::None)
+                ApiResponse::None
             }
             ApiRequest::GetLineCount(buf) => {
                 if let Some(buf) = get_buffer(state, buf).await {
                     let buf = buf.lock().await;
                     let count = buf.get_line_count();
-                    Some(ApiResponse::Number(count))
+                    ApiResponse::Number(count)
                 } else {
-                    Some(ApiResponse::None)
+                    ApiResponse::None
                 }
             }
             ApiRequest::GetLineLength(buf, y) => {
                 if let Some(buf) = get_buffer(state, buf).await {
                     let buf = buf.lock().await;
                     if let Some(length) = buf.get_line_length(y) {
-                        return Some(ApiResponse::Number(length));
+                        return ApiResponse::Number(length);
                     }
                 }
 
-                Some(ApiResponse::None)
+                ApiResponse::None
             }
             ApiRequest::GetChar(buf, pos) => {
                 if let Some(buf) = get_buffer(state, buf).await {
                     let buf = buf.lock().await;
                     if let Some(ch) = buf.get_char(pos) {
-                        return Some(ApiResponse::Char(ch));
+                        return ApiResponse::Char(ch);
                     }
                 }
 
-                Some(ApiResponse::None)
+                ApiResponse::None
             }
             ApiRequest::GetLine(buf, y) => {
                 if let Some(buf) = get_buffer(state, buf).await {
                     let buf = buf.lock().await;
                     if let Some(line) = buf.get_line(y) {
-                        return Some(ApiResponse::String(line));
+                        return ApiResponse::String(line);
                     }
                 }
 
-                Some(ApiResponse::None)
+                ApiResponse::None
             }
             ApiRequest::GetAllLines(buf) => {
                 if let Some(buf) = get_buffer(state, buf).await {
                     let buf = buf.lock().await;
                     let lines = buf.get_all_lines();
-                    Some(ApiResponse::VecString(lines))
+                    ApiResponse::VecString(lines)
                 } else {
-                    Some(ApiResponse::None)
+                    ApiResponse::None
                 }
             }
             ApiRequest::GetContent(buf) => {
                 if let Some(buf) = get_buffer(state, buf).await {
                     let buf = buf.lock().await;
                     let lines = buf.get_content();
-                    Some(ApiResponse::String(lines))
+                    ApiResponse::String(lines)
                 } else {
-                    Some(ApiResponse::None)
+                    ApiResponse::None
                 }
             }
             ApiRequest::InsertChar(buf, pos, ch) => {
@@ -282,7 +282,7 @@ impl EditorApiHandler {
                     buf.insert_char(pos, ch);
                 }
 
-                Some(ApiResponse::None)
+                ApiResponse::None
             }
             ApiRequest::InsertLine(buf, y, line) => {
                 if let Some(buf) = get_buffer(state, buf).await {
@@ -290,65 +290,65 @@ impl EditorApiHandler {
                     buf.insert_line(y, line);
                 }
 
-                Some(ApiResponse::None)
+                ApiResponse::None
             }
             ApiRequest::ReplaceChar(buf, pos, ch) => {
                 if let Some(buf) = get_buffer(state, buf).await {
                     let mut buf = buf.lock().await;
                     if let Some(ch) = buf.replace_char(pos, ch) {
-                        return Some(ApiResponse::Char(ch));
+                        return ApiResponse::Char(ch);
                     }
                 }
 
-                Some(ApiResponse::None)
+                ApiResponse::None
             }
             ApiRequest::ReplaceLine(buf, y, line) => {
                 if let Some(buf) = get_buffer(state, buf).await {
                     let mut buf = buf.lock().await;
                     if let Some(line) = buf.replace_line(y, line) {
-                        return Some(ApiResponse::String(line));
+                        ApiResponse::String(line);
                     }
                 }
 
-                Some(ApiResponse::None)
+                ApiResponse::None
             }
             ApiRequest::ReplaceAllLines(buf, lines) => {
                 if let Some(buf) = get_buffer(state, buf).await {
                     let mut buf = buf.lock().await;
                     let lines = buf.replace_all_lines(lines);
-                    Some(ApiResponse::VecString(lines))
+                    ApiResponse::VecString(lines)
                 } else {
-                    Some(ApiResponse::None)
+                    ApiResponse::None
                 }
             }
             ApiRequest::ReplaceContent(buf, content) => {
                 if let Some(buf) = get_buffer(state, buf).await {
                     let mut buf = buf.lock().await;
                     let content = buf.replace_content(content);
-                    Some(ApiResponse::String(content))
+                    ApiResponse::String(content)
                 } else {
-                    Some(ApiResponse::None)
+                    ApiResponse::None
                 }
             }
             ApiRequest::RemoveChar(buf, pos) => {
                 if let Some(buf) = get_buffer(state, buf).await {
                     let mut buf = buf.lock().await;
                     if let Some(ch) = buf.remove_char(pos) {
-                        return Some(ApiResponse::Char(ch));
+                        return ApiResponse::Char(ch);
                     }
                 }
 
-                Some(ApiResponse::None)
+                ApiResponse::None
             }
             ApiRequest::RemoveLine(buf, y) => {
                 if let Some(buf) = get_buffer(state, buf).await {
                     let mut buf = buf.lock().await;
                     if let Some(line) = buf.remove_line(y) {
-                        return Some(ApiResponse::String(line));
+                        return ApiResponse::String(line);
                     }
                 }
 
-                Some(ApiResponse::None)
+                ApiResponse::None
             }
             ApiRequest::SplitLine(buf, pos) => {
                 if let Some(buf) = get_buffer(state, buf).await {
@@ -356,7 +356,7 @@ impl EditorApiHandler {
                     buf.split_line(pos);
                 }
 
-                Some(ApiResponse::None)
+                ApiResponse::None
             }
             ApiRequest::JoinLines(buf, y) => {
                 if let Some(buf) = get_buffer(state, buf).await {
@@ -364,15 +364,24 @@ impl EditorApiHandler {
                     buf.join_lines(y);
                 }
 
-                Some(ApiResponse::None)
+                ApiResponse::None
             }
             ApiRequest::GetPosition(win) => {
                 if let Some(win) = get_window(state, win).await {
                     let win = win.lock().await;
                     let cursor = win.get_render_cursor().await;
-                    Some(ApiResponse::Vec2(cursor))
+                    ApiResponse::Vec2(cursor)
                 } else {
-                    Some(ApiResponse::None)
+                    ApiResponse::None
+                }
+            }
+            ApiRequest::GetVisualStart(win) => {
+                if let Some(win) = get_window(state, win).await {
+                    let win = win.lock().await;
+                    let cursor = win.get_visual_start().await;
+                    ApiResponse::Vec2(cursor)
+                } else {
+                    ApiResponse::None
                 }
             }
             ApiRequest::MoveBy(win, offset) => {
@@ -381,7 +390,7 @@ impl EditorApiHandler {
                     win.move_by(offset).await;
                 }
 
-                Some(ApiResponse::None)
+                ApiResponse::None
             }
             ApiRequest::MoveToX(win, pos) => {
                 if let Some(win) = get_window(state, win).await {
@@ -394,7 +403,7 @@ impl EditorApiHandler {
                     }
                 }
 
-                Some(ApiResponse::None)
+                ApiResponse::None
             }
             ApiRequest::MoveToY(win, pos) => {
                 if let Some(win) = get_window(state, win).await {
@@ -407,9 +416,8 @@ impl EditorApiHandler {
                     }
                 }
 
-                Some(ApiResponse::None)
+                ApiResponse::None
             }
-            _ => None,
         }
     }
 }
@@ -427,7 +435,7 @@ impl EditorApplication {
         Ok(Self {
             state: Arc::new(Mutex::new(EditorState::new(files)?)),
             input_manager: InputManager::default(),
-            builtin: Arc::new(Mutex::new(Builtin::default())),
+            builtin: Arc::new(Mutex::new(Builtin::new())),
             is_quit: false,
         })
     }
@@ -453,6 +461,13 @@ impl EditorApplication {
 
     async fn process_normal(&mut self, evt: Event) -> anyhow::Result<()> {
         if let Some(action) = self.input_manager.read_event_normal(evt)? {
+            self.on_action(action).await?;
+        }
+        Ok(())
+    }
+
+    async fn process_visual(&mut self, evt: Event) -> anyhow::Result<()> {
+        if let Some(action) = self.input_manager.read_event_visual(evt)? {
             self.on_action(action).await?;
         }
         Ok(())
@@ -559,6 +574,7 @@ impl EditorApplication {
 
         match mode {
             Mode::Normal => self.process_normal(evt).await,
+            Mode::Visual => self.process_visual(evt).await,
             Mode::Insert(is_append) => self.process_insert(evt, is_append).await,
             Mode::Command => self.process_command(evt).await,
         }
@@ -580,7 +596,7 @@ impl EditorApplication {
             let editor = editor.lock().await;
             let builtin = editor.builtin.lock().await;
             (
-                builtin.messages.clone(),
+                builtin.get_messages(),
                 builtin.get_notify(),
                 editor.state.clone(),
             )
@@ -590,7 +606,7 @@ impl EditorApplication {
 
             loop {
                 notify.notified().await;
-                let messages = Builtin::get_messages(&messages).await;
+                let messages = BuiltinApiProvider::get_messages(&messages).await;
                 for (notify, response, request) in messages {
                     let res = handler.process(request).await;
 
