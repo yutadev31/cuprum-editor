@@ -78,6 +78,9 @@ impl Builtin {
                         .await;
                 }
             }
+            BuiltinAction::RemoveSelection => {
+                todo!()
+            }
             BuiltinAction::OpenLineBelow => {
                 if let Some(ApiResponse::Vec2(position)) =
                     self.send_message(ApiRequest::GetPosition(None)).await
@@ -132,6 +135,7 @@ pub enum BuiltinAction {
     MoveToY(Position),
     RemoveChar,
     RemoveLine,
+    RemoveSelection,
     OpenLineBelow,
     OpenLineAbove,
     InsertLineStart,

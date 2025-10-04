@@ -458,6 +458,13 @@ impl EditorApplication {
         Ok(())
     }
 
+    async fn process_visual(&mut self, evt: Event) -> anyhow::Result<()> {
+        if let Some(action) = self.input_manager.read_event_visual(evt)? {
+            self.on_action(action).await?;
+        }
+        Ok(())
+    }
+
     async fn process_insert(&mut self, evt: Event, is_append: bool) -> anyhow::Result<()> {
         if let Some(key_code) = self.input_manager.event_to_key(evt)? {
             let mut state = self.state.lock().await;
@@ -559,6 +566,7 @@ impl EditorApplication {
 
         match mode {
             Mode::Normal => self.process_normal(evt).await,
+            Mode::Visual => self.process_visual(evt).await,
             Mode::Insert(is_append) => self.process_insert(evt, is_append).await,
             Mode::Command => self.process_command(evt).await,
         }

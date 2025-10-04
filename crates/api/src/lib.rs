@@ -19,6 +19,7 @@ pub enum Position {
 pub enum Mode {
     #[default]
     Normal,
+    Visual,
     Insert(bool),
     Command,
 }
@@ -27,6 +28,7 @@ impl ToString for Mode {
     fn to_string(&self) -> String {
         match self {
             Mode::Normal => "NORMAL",
+            Mode::Visual => "VISUAL",
             Mode::Insert(false) => "INSERT",
             Mode::Insert(true) => "INSERT (APPEND)",
             Mode::Command => "COMMAND",
