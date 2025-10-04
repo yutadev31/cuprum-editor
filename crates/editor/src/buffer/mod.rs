@@ -129,7 +129,8 @@ impl Buffer {
     }
 
     pub fn remove_line(&mut self, y: usize) -> Option<String> {
-        if y < self.get_line_count() {
+        let line_count = self.get_line_count();
+        if line_count != 0 && y < line_count {
             self.mark_dirty();
             Some(self.content.remove(y))
         } else {

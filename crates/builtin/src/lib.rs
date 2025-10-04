@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use api::{ApiRequest, ApiResponse, CuprumApi, CuprumApiProvider, Mode, Position};
 use tokio::sync::{Mutex, Notify};
-use utils::vec2::IVec2;
+use utils::vec2::{IVec2, UVec2};
 
 #[derive(Debug, Default)]
 pub struct BuiltinApiProvider {
@@ -96,7 +96,52 @@ impl Builtin {
                 self.api.remove_line(None, pos.y).await?;
             }
             BuiltinAction::RemoveSelection => {
-                todo!()
+                let cursor = self.api.get_position(None).await?;
+                let visual_start = self.api.get_visual_start(None).await?;
+
+                let (left, right, x) = if cursor < visual_start {
+                    (cursor, visual_start, true)
+                } else {
+                    (visual_start, cursor, false)
+                };
+
+                let z = if left.y != right.y {
+                    for _ in 0..right.x + 1 {
+                        self.api.remove_char(None, UVec2::new(0, right.y)).await?;
+                    }
+
+                    let z = right.y - left.y - 1;
+
+                    for _ in left.y + 1..right.y {
+                        self.api.remove_line(None, left.y + 1).await?;
+                    }
+
+                    let line_len = self.api.get_line_length(None, left.y).await?;
+                    for _ in left.x..line_len {
+                        self.api.remove_char(None, UVec2::new(0, left.y)).await?;
+                    }
+
+                    self.api.join_lines(None, left.y).await?;
+
+                    if x { z } else { 0 }
+                } else {
+                    for _ in left.x..right.x {
+                        self.api
+                            .remove_char(None, UVec2::new(left.x, left.y))
+                            .await?;
+                    }
+
+                    0
+                };
+
+                self.api
+                    .move_to_y(None, Position::Number(visual_start.y - z))
+                    .await?;
+                self.api
+                    .move_to_x(None, Position::Number(visual_start.x))
+                    .await?;
+
+                self.api.change_mode(Mode::Normal).await?;
             }
             BuiltinAction::OpenLineBelow => {
                 let pos = self.api.get_position(None).await?;
