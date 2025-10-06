@@ -1,7 +1,7 @@
 mod log;
 
 use clap::Parser;
-use editor::EditorApplication;
+use cuprum::EditorApplication;
 
 use crate::log::init_logger;
 
