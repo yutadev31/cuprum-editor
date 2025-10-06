@@ -1,22 +1,30 @@
-use std::fmt::{self, Debug, Display};
+use std::{
+    fmt::{self, Debug, Display},
+    time::Duration,
+};
 
 use anyhow::anyhow;
+use serde::{Deserialize, Serialize};
+use tokio::{
+    io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader, stdin, stdout},
+    time::sleep,
+};
 use utils::vec2::{IVec2, UVec2};
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BufferId(pub usize);
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WindowId(pub usize);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Position {
     Number(usize),
     Start,
     End,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub enum Mode {
     #[default]
     Normal,
@@ -43,7 +51,7 @@ impl Display for Mode {
 
 pub trait Api {}
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ApiRequest {
     ChangeMode(Mode),
     OpenFile(Option<String>),
@@ -71,7 +79,7 @@ pub enum ApiRequest {
     MoveToY(Option<WindowId>, Position),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ApiResponse {
     None,
     Number(usize),
@@ -376,4 +384,24 @@ impl<T: CuprumApiProvider> CuprumApi<T> {
 pub trait CuprumApiProvider: Default {
     #[allow(async_fn_in_trait)]
     async fn send_message(&mut self, msg: ApiRequest) -> anyhow::Result<ApiResponse>;
+}
+
+#[derive(Debug, Default)]
+pub struct DefaultCuprumApiProvider {}
+
+impl CuprumApiProvider for DefaultCuprumApiProvider {
+    async fn send_message(&mut self, msg: ApiRequest) -> anyhow::Result<ApiResponse> {
+        let request = serde_json::to_string(&msg)?;
+        let mut stdout = stdout();
+        stdout.write_all(request.as_bytes()).await?;
+        stdout.write_all(b"\n").await?;
+        stdout.flush().await?;
+
+        let mut reader = BufReader::new(stdin());
+        let mut response = String::new();
+        reader.read_line(&mut response).await?;
+
+        let response: ApiResponse = serde_json::from_str(&response)?;
+        Ok(response)
+    }
 }

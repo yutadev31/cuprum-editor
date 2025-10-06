@@ -3,7 +3,9 @@ resolver = "3"
 members = [
   "crates/api",
   "crates/builtin",
+  "crates/plugin-manager",
   "crates/utils",
+  "plugins/example-plugin",
 ]
 
 [workspace.package]
@@ -22,10 +24,15 @@ fern = "0.7.1"
 log = "0.4.28"
 tokio = { version = "1.47.1", features = ["full"] }
 async-trait = "0.1.89"
+home = "0.5.11"
+serde_json = "1.0"
+serde = { version = "1.0.228", features = ["derive"] }
+
 
 api.path = "crates/api"
 builtin.path = "crates/builtin"
 utils.path = "crates/utils"
+plugin-manager.path = "crates/plugin-manager"
 
 [package]
 name = "cuprum"
@@ -46,3 +53,4 @@ api.workspace = true
 builtin.workspace = true
 crossterm.workspace = true
 utils.workspace = true
+plugin-manager.workspace = true
