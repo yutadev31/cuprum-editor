@@ -192,7 +192,7 @@ mod tests {
     #[test]
     fn test_insert_remove_line() {
         let mut buf = Buffer::default();
-        assert_eq!(buf.remove_line(0), None);
+        assert_eq!(buf.remove_line(0), Some("".to_string()));
         assert_eq!(buf.remove_line(1), None);
 
         buf.insert_line(0, "first line".to_string());
@@ -211,7 +211,7 @@ mod tests {
     #[test]
     fn test_split_join_line() {
         let mut buf = Buffer::default();
-        buf.insert_line(0, "HelloWorld".to_string());
+        buf.replace_line(0, "HelloWorld".to_string());
 
         buf.split_line(UVec2::new(5, 0));
         assert_eq!(buf.get_line_count(), 2);

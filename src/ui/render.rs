@@ -86,7 +86,7 @@ impl Renderer {
                         Print(line_right),
                         Print(" ".repeat(size.x - line.len()))
                     )?;
-                } else if left.y == line_y && line.len() != 0 {
+                } else if left.y == line_y && !line.is_empty() {
                     let (line_left, line_right) = line.split_at(left.x);
                     queue!(
                         stdout(),
@@ -144,7 +144,7 @@ impl Renderer {
                 Print(" ".repeat(w as usize - command_buf.len() - 1))
             )?;
         } else {
-            let status = format!(" {} ", mode.to_string());
+            let status = format!(" {} ", mode);
 
             queue!(
                 stdout(),

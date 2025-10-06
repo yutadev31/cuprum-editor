@@ -1,6 +1,10 @@
 [workspace]
 resolver = "3"
-members = ["crates/api", "crates/builtin", "crates/editor", "crates/utils"]
+members = [
+  "crates/api",
+  "crates/builtin",
+  "crates/utils",
+]
 
 [workspace.package]
 version = "0.1.0"
@@ -21,7 +25,6 @@ async-trait = "0.1.89"
 
 api.path = "crates/api"
 builtin.path = "crates/builtin"
-editor.path = "crates/editor"
 utils.path = "crates/utils"
 
 [package]
@@ -39,5 +42,7 @@ chrono.workspace = true
 fern.workspace = true
 log.workspace = true
 tokio.workspace = true
-
-editor.workspace = true
+api.workspace = true
+builtin.workspace = true
+crossterm.workspace = true
+utils.workspace = true

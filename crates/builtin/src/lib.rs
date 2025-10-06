@@ -4,17 +4,17 @@ use api::{ApiRequest, ApiResponse, CuprumApi, CuprumApiProvider, Mode, Position}
 use tokio::sync::{Mutex, Notify};
 use utils::vec2::{IVec2, UVec2};
 
+pub type Messages = Vec<(Arc<Notify>, Arc<Mutex<ApiResponse>>, ApiRequest)>;
+
 #[derive(Debug, Default)]
 pub struct BuiltinApiProvider {
     next_index: usize,
     notify: Arc<Notify>,
-    pub messages: Arc<Mutex<Vec<(Arc<Notify>, Arc<Mutex<ApiResponse>>, ApiRequest)>>>,
+    pub messages: Arc<Mutex<Messages>>,
 }
 
 impl BuiltinApiProvider {
-    pub async fn get_messages(
-        messages: &Arc<Mutex<Vec<(Arc<Notify>, Arc<Mutex<ApiResponse>>, ApiRequest)>>>,
-    ) -> Vec<(Arc<Notify>, Arc<Mutex<ApiResponse>>, ApiRequest)> {
+    pub async fn get_messages(messages: &Arc<Mutex<Messages>>) -> Messages {
         let mut messages = messages.lock().await;
 
         let queue = messages.clone();
@@ -47,26 +47,15 @@ impl CuprumApiProvider for BuiltinApiProvider {
 pub struct Builtin {
     api: CuprumApi<BuiltinApiProvider>,
     notify: Arc<Notify>,
-    messages: Arc<Mutex<Vec<(Arc<Notify>, Arc<Mutex<ApiResponse>>, ApiRequest)>>>,
+    messages: Arc<Mutex<Messages>>,
 }
 
 impl Builtin {
-    pub fn new() -> Self {
-        let provider = BuiltinApiProvider::default();
-        Self {
-            notify: provider.get_notify(),
-            messages: provider.messages.clone(),
-            api: CuprumApi::new(provider),
-        }
-    }
-
     pub fn get_notify(&self) -> Arc<Notify> {
         self.notify.clone()
     }
 
-    pub fn get_messages(
-        &self,
-    ) -> Arc<Mutex<Vec<(Arc<Notify>, Arc<Mutex<ApiResponse>>, ApiRequest)>>> {
+    pub fn get_messages(&self) -> Arc<Mutex<Messages>> {
         self.messages.clone()
     }
 
@@ -165,6 +154,17 @@ impl Builtin {
         }
 
         Ok(())
+    }
+}
+
+impl Default for Builtin {
+    fn default() -> Self {
+        let provider = BuiltinApiProvider::default();
+        Self {
+            notify: provider.get_notify(),
+            messages: provider.messages.clone(),
+            api: CuprumApi::new(provider),
+        }
     }
 }
 

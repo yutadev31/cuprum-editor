@@ -56,13 +56,11 @@ impl EditorApiHandler {
         ) -> Option<Arc<Mutex<Buffer>>> {
             if let Some(buf) = buf {
                 state.buffer_manager.get_buffer(buf)
+            } else if let Some(active) = state.get_active_window() {
+                let win = active.lock().await;
+                Some(win.get_buffer())
             } else {
-                if let Some(active) = state.get_active_window() {
-                    let win = active.lock().await;
-                    Some(win.get_buffer())
-                } else {
-                    None
-                }
+                None
             }
         }
 
@@ -170,7 +168,7 @@ impl EditorApiHandler {
                 if let Some(buf) = get_buffer(state, buf).await {
                     let mut buf = buf.lock().await;
                     if let Some(line) = buf.replace_line(y, line) {
-                        ApiResponse::String(line);
+                        return ApiResponse::String(line);
                     }
                 }
 
@@ -299,7 +297,7 @@ impl EditorApplication {
         Ok(Self {
             state: Arc::new(Mutex::new(EditorState::new(files)?)),
             input_manager: InputManager::default(),
-            builtin: Arc::new(Mutex::new(Builtin::new())),
+            builtin: Arc::new(Mutex::new(Builtin::default())),
             is_quit: false,
         })
     }
@@ -364,8 +362,6 @@ impl EditorApplication {
                         }
                     }
                     KeyCode::Backspace => {
-                        if cursor.x == 0 && cursor.y == 0 {}
-
                         let x = cursor.x;
 
                         let line_len = {

@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::fmt::{self, Debug, Display};
 
 use anyhow::anyhow;
 use utils::vec2::{IVec2, UVec2};
@@ -25,16 +25,19 @@ pub enum Mode {
     Command,
 }
 
-impl ToString for Mode {
-    fn to_string(&self) -> String {
-        match self {
-            Mode::Normal => "NORMAL",
-            Mode::Visual => "VISUAL",
-            Mode::Insert(false) => "INSERT",
-            Mode::Insert(true) => "INSERT (APPEND)",
-            Mode::Command => "COMMAND",
-        }
-        .to_string()
+impl Display for Mode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Mode::Normal => "NORMAL",
+                Mode::Visual => "VISUAL",
+                Mode::Insert(false) => "INSERT",
+                Mode::Insert(true) => "INSERT (APPEND)",
+                Mode::Command => "COMMAND",
+            }
+        )
     }
 }
 
