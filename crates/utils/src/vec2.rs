@@ -1,12 +1,14 @@
 use std::{cmp::Ordering, ops::Add};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct UVec2 {
     pub x: usize,
     pub y: usize,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct IVec2 {
     pub x: isize,
     pub y: isize,

@@ -10,6 +10,7 @@ use std::{sync::Arc, time::Duration};
 use api::{ApiRequest, ApiResponse, BufferId, Mode, Position, WindowId};
 use builtin::{Builtin, BuiltinApiProvider};
 use crossterm::event::{self, Event};
+use plugin_manager::PluginManager;
 use tokio::{
     sync::{Mutex, MutexGuard},
     time::sleep,
@@ -452,17 +453,18 @@ impl EditorApplication {
     pub async fn main(files: Vec<String>) -> anyhow::Result<()> {
         let editor = Arc::new(Mutex::new(EditorApplication::new(files)?));
 
-        let (messages, notify, state) = {
+        let (messages, notify, builtin_state, plugin_state) = {
             let editor = editor.lock().await;
             let builtin = editor.builtin.lock().await;
             (
                 builtin.get_messages(),
                 builtin.get_notify(),
                 editor.state.clone(),
+                editor.state.clone(),
             )
         };
         tokio::spawn(async move {
-            let mut handler = EditorApiHandler::new(state);
+            let mut handler = EditorApiHandler::new(builtin_state);
 
             loop {
                 notify.notified().await;
@@ -476,6 +478,31 @@ impl EditorApplication {
                     notify.notify_one();
                 }
             }
+        });
+
+        tokio::spawn(async move {
+            let mut plugin_manager = PluginManager::default();
+            let result = plugin_manager.init().await.unwrap();
+            for (requests, request_notify, responses, response_notify) in result {
+                let state = plugin_state.clone();
+                tokio::spawn(async move {
+                    let mut handler = EditorApiHandler::new(state);
+                    loop {
+                        request_notify.notified().await;
+                        let requests = requests.lock().await;
+                        let mut responses = responses.lock().await;
+
+                        for request in requests.clone() {
+                            let res = handler.process(request).await;
+                            responses.push(res);
+                        }
+
+                        response_notify.notify_one();
+                    }
+                });
+            }
+
+            plugin_manager.run().await.unwrap();
         });
 
         let editor_render = editor.clone();
