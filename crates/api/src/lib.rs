@@ -1,14 +1,8 @@
-use std::{
-    fmt::{self, Debug, Display},
-    time::Duration,
-};
+use std::fmt::{self, Debug, Display};
 
 use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
-use tokio::{
-    io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader, stdin, stdout},
-    time::sleep,
-};
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, stdin, stdout};
 use utils::vec2::{IVec2, UVec2};
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]

@@ -3,7 +3,7 @@ use std::{path::PathBuf, process::Stdio, sync::Arc};
 use api::{ApiRequest, ApiResponse};
 use tokio::{
     fs::read_dir,
-    io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader},
+    io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     process::Command,
     sync::{Mutex, Notify},
 };
