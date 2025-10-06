@@ -114,10 +114,9 @@ impl Window {
         {
             if let Some(max_x) = self.get_cursor_max_x().await
                 && offset.x != 0
+                && self.cursor.x > max_x
             {
-                if self.cursor.x > max_x {
-                    self.cursor.x = max_x;
-                }
+                self.cursor.x = max_x;
             }
         }
 
