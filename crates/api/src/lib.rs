@@ -152,7 +152,8 @@ impl DefaultCuprumApiProvider {
             loop {
                 match Self::process_request(&requests, &request_notify).await {
                     Ok(_) => {}
-                    Err(_) => {
+                    Err(err) => {
+                        eprintln!("{}", err);
                         break;
                     }
                 }
@@ -163,7 +164,8 @@ impl DefaultCuprumApiProvider {
             loop {
                 match Self::process_response(&responses, &response_notify).await {
                     Ok(_) => {}
-                    Err(_) => {
+                    Err(err) => {
+                        eprintln!("{}", err);
                         break;
                     }
                 }
@@ -182,12 +184,9 @@ impl CuprumApiProvider for DefaultCuprumApiProvider {
         let id = {
             let mut next_index = self.next_index.lock().await;
 
-            let id = RequestId(next_index.clone());
+            let id = RequestId(*next_index);
             let mut requests = self.requests.lock().await;
-            requests.push(CuprumApiRequest {
-                id: id.clone(),
-                kind,
-            });
+            requests.push(CuprumApiRequest { id, kind });
 
             *next_index += 1;
             id
