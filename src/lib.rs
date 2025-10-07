@@ -7,7 +7,10 @@ mod window;
 
 use std::{sync::Arc, time::Duration};
 
-use api::{BufferId, CuprumApiRequest, CuprumApiResponse, Mode, Position, WindowId};
+use api::{
+    BufferId, CuprumApiRequestKind, CuprumApiResponse, CuprumApiResponseKind, Mode, Position,
+    WindowId,
+};
 use builtin::{Builtin, BuiltinApiProvider};
 use crossterm::event::{self, Event};
 use plugin_manager::PluginManager;
@@ -37,7 +40,7 @@ impl EditorApiHandler {
         Self { state }
     }
 
-    async fn process(&mut self, request: CuprumApiRequest) -> Option<CuprumApiResponse> {
+    async fn process(&mut self, request: CuprumApiRequestKind) -> Option<CuprumApiResponseKind> {
         let mut state = self.state.lock().await;
 
         async fn get_window(
@@ -66,15 +69,15 @@ impl EditorApiHandler {
         }
 
         match request {
-            CuprumApiRequest::ChangeMode(mode) => {
+            CuprumApiRequestKind::ChangeMode(mode) => {
                 state.set_mode(mode).await;
                 None
             }
-            CuprumApiRequest::OpenFile(_path) => {
+            CuprumApiRequestKind::OpenFile(_path) => {
                 todo!()
             }
             // TODO: Pathを使った処理の実装
-            CuprumApiRequest::SaveBuffer(buf, _path) => {
+            CuprumApiRequestKind::SaveBuffer(buf, _path) => {
                 if let Some(buf) = get_buffer(state, buf).await {
                     let mut buf = buf.lock().await;
                     buf.save().ok();
@@ -82,64 +85,64 @@ impl EditorApiHandler {
 
                 None
             }
-            CuprumApiRequest::GetLineCount(buf) => {
+            CuprumApiRequestKind::GetLineCount(buf) => {
                 if let Some(buf) = get_buffer(state, buf).await {
                     let buf = buf.lock().await;
                     let count = buf.get_line_count();
-                    Some(CuprumApiResponse::GetLineCount(count))
+                    Some(CuprumApiResponseKind::GetLineCount(count))
                 } else {
                     None
                 }
             }
-            CuprumApiRequest::GetLineLength(buf, y) => {
+            CuprumApiRequestKind::GetLineLength(buf, y) => {
                 if let Some(buf) = get_buffer(state, buf).await {
                     let buf = buf.lock().await;
                     if let Some(length) = buf.get_line_length(y) {
-                        return Some(CuprumApiResponse::GetLineLength(length));
+                        return Some(CuprumApiResponseKind::GetLineLength(length));
                     }
                 }
 
                 None
             }
-            CuprumApiRequest::GetChar(buf, pos) => {
+            CuprumApiRequestKind::GetChar(buf, pos) => {
                 if let Some(buf) = get_buffer(state, buf).await {
                     let buf = buf.lock().await;
                     if let Some(ch) = buf.get_char(pos) {
-                        return Some(CuprumApiResponse::GetChar(ch));
+                        return Some(CuprumApiResponseKind::GetChar(ch));
                     }
                 }
 
                 None
             }
-            CuprumApiRequest::GetLine(buf, y) => {
+            CuprumApiRequestKind::GetLine(buf, y) => {
                 if let Some(buf) = get_buffer(state, buf).await {
                     let buf = buf.lock().await;
                     if let Some(line) = buf.get_line(y) {
-                        return Some(CuprumApiResponse::GetLine(line));
+                        return Some(CuprumApiResponseKind::GetLine(line));
                     }
                 }
 
                 None
             }
-            CuprumApiRequest::GetAllLines(buf) => {
+            CuprumApiRequestKind::GetAllLines(buf) => {
                 if let Some(buf) = get_buffer(state, buf).await {
                     let buf = buf.lock().await;
                     let lines = buf.get_all_lines();
-                    Some(CuprumApiResponse::GetAllLines(lines))
+                    Some(CuprumApiResponseKind::GetAllLines(lines))
                 } else {
                     None
                 }
             }
-            CuprumApiRequest::GetContent(buf) => {
+            CuprumApiRequestKind::GetContent(buf) => {
                 if let Some(buf) = get_buffer(state, buf).await {
                     let buf = buf.lock().await;
                     let content = buf.get_content();
-                    Some(CuprumApiResponse::GetContent(content))
+                    Some(CuprumApiResponseKind::GetContent(content))
                 } else {
                     None
                 }
             }
-            CuprumApiRequest::InsertChar(buf, pos, ch) => {
+            CuprumApiRequestKind::InsertChar(buf, pos, ch) => {
                 if let Some(buf) = get_buffer(state, buf).await {
                     let mut buf = buf.lock().await;
                     buf.insert_char(pos, ch);
@@ -147,7 +150,7 @@ impl EditorApiHandler {
 
                 None
             }
-            CuprumApiRequest::InsertLine(buf, y, line) => {
+            CuprumApiRequestKind::InsertLine(buf, y, line) => {
                 if let Some(buf) = get_buffer(state, buf).await {
                     let mut buf = buf.lock().await;
                     buf.insert_line(y, line);
@@ -155,65 +158,65 @@ impl EditorApiHandler {
 
                 None
             }
-            CuprumApiRequest::ReplaceChar(buf, pos, ch) => {
+            CuprumApiRequestKind::ReplaceChar(buf, pos, ch) => {
                 if let Some(buf) = get_buffer(state, buf).await {
                     let mut buf = buf.lock().await;
                     if let Some(ch) = buf.replace_char(pos, ch) {
-                        return Some(CuprumApiResponse::ReplaceChar(ch));
+                        return Some(CuprumApiResponseKind::ReplaceChar(ch));
                     }
                 }
 
                 None
             }
-            CuprumApiRequest::ReplaceLine(buf, y, line) => {
+            CuprumApiRequestKind::ReplaceLine(buf, y, line) => {
                 if let Some(buf) = get_buffer(state, buf).await {
                     let mut buf = buf.lock().await;
                     if let Some(line) = buf.replace_line(y, line) {
-                        return Some(CuprumApiResponse::ReplaceLine(line));
+                        return Some(CuprumApiResponseKind::ReplaceLine(line));
                     }
                 }
 
                 None
             }
-            CuprumApiRequest::ReplaceAllLines(buf, lines) => {
+            CuprumApiRequestKind::ReplaceAllLines(buf, lines) => {
                 if let Some(buf) = get_buffer(state, buf).await {
                     let mut buf = buf.lock().await;
                     let lines = buf.replace_all_lines(lines);
-                    Some(CuprumApiResponse::ReplaceAllLines(lines))
+                    Some(CuprumApiResponseKind::ReplaceAllLines(lines))
                 } else {
                     None
                 }
             }
-            CuprumApiRequest::ReplaceContent(buf, content) => {
+            CuprumApiRequestKind::ReplaceContent(buf, content) => {
                 if let Some(buf) = get_buffer(state, buf).await {
                     let mut buf = buf.lock().await;
                     let content = buf.replace_content(content);
-                    Some(CuprumApiResponse::ReplaceContent(content))
+                    Some(CuprumApiResponseKind::ReplaceContent(content))
                 } else {
                     None
                 }
             }
-            CuprumApiRequest::RemoveChar(buf, pos) => {
+            CuprumApiRequestKind::RemoveChar(buf, pos) => {
                 if let Some(buf) = get_buffer(state, buf).await {
                     let mut buf = buf.lock().await;
                     if let Some(ch) = buf.remove_char(pos) {
-                        return Some(CuprumApiResponse::RemoveChar(ch));
+                        return Some(CuprumApiResponseKind::RemoveChar(ch));
                     }
                 }
 
                 None
             }
-            CuprumApiRequest::RemoveLine(buf, y) => {
+            CuprumApiRequestKind::RemoveLine(buf, y) => {
                 if let Some(buf) = get_buffer(state, buf).await {
                     let mut buf = buf.lock().await;
                     if let Some(line) = buf.remove_line(y) {
-                        return Some(CuprumApiResponse::RemoveLine(line));
+                        return Some(CuprumApiResponseKind::RemoveLine(line));
                     }
                 }
 
                 None
             }
-            CuprumApiRequest::SplitLine(buf, pos) => {
+            CuprumApiRequestKind::SplitLine(buf, pos) => {
                 if let Some(buf) = get_buffer(state, buf).await {
                     let mut buf = buf.lock().await;
                     buf.split_line(pos);
@@ -221,7 +224,7 @@ impl EditorApiHandler {
 
                 None
             }
-            CuprumApiRequest::JoinLines(buf, y) => {
+            CuprumApiRequestKind::JoinLines(buf, y) => {
                 if let Some(buf) = get_buffer(state, buf).await {
                     let mut buf = buf.lock().await;
                     buf.join_lines(y);
@@ -229,25 +232,25 @@ impl EditorApiHandler {
 
                 None
             }
-            CuprumApiRequest::GetCursor(win) => {
+            CuprumApiRequestKind::GetCursor(win) => {
                 if let Some(win) = get_window(state, win).await {
                     let win = win.lock().await;
                     let cursor = win.get_render_cursor().await;
-                    Some(CuprumApiResponse::GetCursor(cursor))
+                    Some(CuprumApiResponseKind::GetCursor(cursor))
                 } else {
                     None
                 }
             }
-            CuprumApiRequest::GetVisualStart(win) => {
+            CuprumApiRequestKind::GetVisualStart(win) => {
                 if let Some(win) = get_window(state, win).await {
                     let win = win.lock().await;
                     let cursor = win.get_visual_start().await;
-                    Some(CuprumApiResponse::GetVisualStart(cursor))
+                    Some(CuprumApiResponseKind::GetVisualStart(cursor))
                 } else {
                     None
                 }
             }
-            CuprumApiRequest::MoveBy(win, offset) => {
+            CuprumApiRequestKind::MoveBy(win, offset) => {
                 if let Some(win) = get_window(state, win).await {
                     let mut win = win.lock().await;
                     win.move_by(offset).await;
@@ -255,7 +258,7 @@ impl EditorApiHandler {
 
                 None
             }
-            CuprumApiRequest::MoveToX(win, pos) => {
+            CuprumApiRequestKind::MoveToX(win, pos) => {
                 if let Some(win) = get_window(state, win).await {
                     let mut win = win.lock().await;
 
@@ -268,7 +271,7 @@ impl EditorApiHandler {
 
                 None
             }
-            CuprumApiRequest::MoveToY(win, pos) => {
+            CuprumApiRequestKind::MoveToY(win, pos) => {
                 if let Some(win) = get_window(state, win).await {
                     let mut win = win.lock().await;
 
@@ -493,8 +496,11 @@ impl EditorApplication {
                         let mut responses = responses.lock().await;
 
                         for request in requests.clone() {
-                            let res = handler.process(request).await;
-                            responses.push(res);
+                            let response = handler.process(request.kind).await;
+                            responses.push(CuprumApiResponse {
+                                id: request.id,
+                                kind: response,
+                            });
                         }
 
                         response_notify.notify_one();

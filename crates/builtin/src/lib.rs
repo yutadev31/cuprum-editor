@@ -1,13 +1,15 @@
 use std::sync::Arc;
 
-use api::{CuprumApi, CuprumApiProvider, CuprumApiRequest, CuprumApiResponse, Mode, Position};
+use api::{
+    CuprumApi, CuprumApiProvider, CuprumApiRequestKind, CuprumApiResponseKind, Mode, Position,
+};
 use tokio::sync::{Mutex, Notify};
 use utils::vec2::{IVec2, UVec2};
 
 pub type Messages = Vec<(
     Arc<Notify>,
-    Arc<Mutex<Option<CuprumApiResponse>>>,
-    CuprumApiRequest,
+    Arc<Mutex<Option<CuprumApiResponseKind>>>,
+    CuprumApiRequestKind,
 )>;
 
 #[derive(Debug, Default)]
@@ -34,8 +36,8 @@ impl BuiltinApiProvider {
 impl CuprumApiProvider for BuiltinApiProvider {
     async fn send_message(
         &mut self,
-        msg: CuprumApiRequest,
-    ) -> anyhow::Result<Option<CuprumApiResponse>> {
+        msg: CuprumApiRequestKind,
+    ) -> anyhow::Result<Option<CuprumApiResponseKind>> {
         let notify = Arc::new(Notify::new());
         let state = Arc::new(Mutex::new(None));
         {
