@@ -190,7 +190,6 @@ impl PluginManager {
                     Ok(_) => {}
                     Err(err) => {
                         log::error!("{}", err);
-                        return;
                     }
                 }
             });
