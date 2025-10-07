@@ -122,12 +122,13 @@ impl Plugin {
             }
         });
 
-        let child_process_task = tokio::spawn(async move { child.wait().await });
-
         tokio::select! {
-            _ = response_task => {},
-            _ = request_task => {},
-            _ = child_process_task => {},
+            _ = response_task => {
+                child.kill().await?
+            },
+            _ = request_task => {
+                child.kill().await?
+            },
         }
 
         Ok(())
