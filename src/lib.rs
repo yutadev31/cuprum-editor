@@ -363,6 +363,10 @@ impl EditorApplication {
                         }
                     }
                     KeyCode::Backspace => {
+                        if cursor.x == 0 && cursor.y == 0 {
+                            return Ok(());
+                        }
+
                         let x = cursor.x;
 
                         let line_len = {
