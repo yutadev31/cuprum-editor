@@ -12,7 +12,7 @@ pub fn init_logger() -> Result<(), fern::InitError> {
                 message
             ))
         })
-        .level(log::LevelFilter::Trace)
+        .level(log::LevelFilter::Info)
         .chain(fern::log_file("output.log")?)
         .apply()?;
     Ok(())
