@@ -1,6 +1,6 @@
 use std::{path::PathBuf, process::Stdio, sync::Arc};
 
-use api::{ApiRequest, ApiResponse};
+use api::{CuprumApiRequest, CuprumApiResponse};
 use tokio::{
     fs::read_dir,
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
@@ -11,11 +11,18 @@ use tokio::{
 #[derive(Debug)]
 pub struct Plugin {
     command: PathBuf,
-    request_queue: Arc<Mutex<Vec<ApiRequest>>>,
+    request_queue: Arc<Mutex<Vec<CuprumApiRequest>>>,
     request_notify: Arc<Notify>,
-    response_queue: Arc<Mutex<Vec<ApiResponse>>>,
+    response_queue: Arc<Mutex<Vec<Option<CuprumApiResponse>>>>,
     response_notify: Arc<Notify>,
 }
+
+type Arcs = (
+    Arc<Mutex<Vec<CuprumApiRequest>>>,
+    Arc<Notify>,
+    Arc<Mutex<Vec<Option<CuprumApiResponse>>>>,
+    Arc<Notify>,
+);
 
 impl Plugin {
     pub fn new(command: PathBuf) -> Self {
@@ -28,14 +35,7 @@ impl Plugin {
         }
     }
 
-    pub fn get(
-        &self,
-    ) -> (
-        Arc<Mutex<Vec<ApiRequest>>>,
-        Arc<Notify>,
-        Arc<Mutex<Vec<ApiResponse>>>,
-        Arc<Notify>,
-    ) {
+    pub fn get(&self) -> Arcs {
         (
             self.request_queue.clone(),
             self.request_notify.clone(),
@@ -107,16 +107,7 @@ impl PluginManager {
         Ok(plugin_paths)
     }
 
-    pub async fn init(
-        &mut self,
-    ) -> anyhow::Result<
-        Vec<(
-            Arc<Mutex<Vec<ApiRequest>>>,
-            Arc<Notify>,
-            Arc<Mutex<Vec<ApiResponse>>>,
-            Arc<Notify>,
-        )>,
-    > {
+    pub async fn init(&mut self) -> anyhow::Result<Vec<Arcs>> {
         let plugins = self.get_plugins().await?;
 
         let mut arcs = Vec::new();
@@ -126,7 +117,7 @@ impl PluginManager {
             self.plugins.push(Arc::new(Mutex::new(plugin)));
         }
 
-        log::info!("loaded {} plugins", self.plugins.len());
+        log::info!("{} plugins loaded", self.plugins.len());
         Ok(arcs)
     }
 

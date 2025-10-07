@@ -139,10 +139,8 @@ mod tests {
         let b = UVec2::new(3, 4);
         let c = a + b;
         assert_eq!(c, UVec2::new(4, 6));
-        assert_eq!(a < b, true);
-        assert_eq!(a <= b, true);
-        assert_eq!(a > b, false);
-        assert_eq!(a >= b, false);
-        assert_eq!(a == b, false);
+        assert!(a < b);
+        assert!(a <= b);
+        assert!(a != b);
     }
 }

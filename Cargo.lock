@@ -87,11 +87,22 @@ name = "api"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "api-macro",
  "async-trait",
  "serde",
  "serde_json",
  "tokio",
  "utils",
+]
+
+[[package]]
+name = "api-macro"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "heck",
+ "quote",
+ "syn",
 ]
 
 [[package]]
