@@ -86,7 +86,13 @@ pub struct PluginManager {
 impl PluginManager {
     fn get_plugin_dir(&self) -> PathBuf {
         let home_dir = home::home_dir().unwrap();
-        home_dir.join(".cuprum/plugins")
+
+        #[cfg(debug_assertions)]
+        let plugin_dir = home_dir.join(".cuprum/debug/plugins");
+        #[cfg(not(debug_assertions))]
+        let plugin_dir = home_dir.join(".cuprum/plugins");
+
+        plugin_dir
     }
 
     async fn get_plugin_paths(&self, plugin_dir: PathBuf) -> anyhow::Result<Vec<PathBuf>> {
