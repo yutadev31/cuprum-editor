@@ -17,6 +17,13 @@ pub struct Plugin {
     response_notify: Arc<Notify>,
 }
 
+type Arcs = (
+    Arc<Mutex<Vec<CuprumApiRequest>>>,
+    Arc<Notify>,
+    Arc<Mutex<Vec<Option<CuprumApiResponse>>>>,
+    Arc<Notify>,
+);
+
 impl Plugin {
     pub fn new(command: PathBuf) -> Self {
         Self {
@@ -28,14 +35,7 @@ impl Plugin {
         }
     }
 
-    pub fn get(
-        &self,
-    ) -> (
-        Arc<Mutex<Vec<CuprumApiRequest>>>,
-        Arc<Notify>,
-        Arc<Mutex<Vec<Option<CuprumApiResponse>>>>,
-        Arc<Notify>,
-    ) {
+    pub fn get(&self) -> Arcs {
         (
             self.request_queue.clone(),
             self.request_notify.clone(),
@@ -107,16 +107,7 @@ impl PluginManager {
         Ok(plugin_paths)
     }
 
-    pub async fn init(
-        &mut self,
-    ) -> anyhow::Result<
-        Vec<(
-            Arc<Mutex<Vec<CuprumApiRequest>>>,
-            Arc<Notify>,
-            Arc<Mutex<Vec<Option<CuprumApiResponse>>>>,
-            Arc<Notify>,
-        )>,
-    > {
+    pub async fn init(&mut self) -> anyhow::Result<Vec<Arcs>> {
         let plugins = self.get_plugins().await?;
 
         let mut arcs = Vec::new();

@@ -128,13 +128,11 @@ pub fn define_api(input: TokenStream) -> TokenStream {
             quote! {
                 #method_camel_name( #( #method_args ),* )
             },
-            if let Some(method_ret) = &method.ret {
-                Some(quote! {
+            (method.ret.clone()).map(|method_ret| {
+                quote! {
                     #method_camel_name( #method_ret )
-                })
-            } else {
-                None
-            },
+                }
+            }),
         )
     });
 
