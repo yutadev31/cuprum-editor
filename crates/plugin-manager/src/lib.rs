@@ -12,16 +12,16 @@ use tokio::{
 #[derive(Debug)]
 pub struct Plugin {
     command: PathBuf,
-    request_queue: Arc<Mutex<Vec<CuprumApiRequest>>>,
+    requests: Arc<Mutex<Vec<CuprumApiRequest>>>,
     request_notify: Arc<Notify>,
-    response_queue: Arc<Mutex<Vec<Option<CuprumApiResponse>>>>,
+    responses: Arc<Mutex<Vec<CuprumApiResponse>>>,
     response_notify: Arc<Notify>,
 }
 
 type Arcs = (
     Arc<Mutex<Vec<CuprumApiRequest>>>,
     Arc<Notify>,
-    Arc<Mutex<Vec<Option<CuprumApiResponse>>>>,
+    Arc<Mutex<Vec<CuprumApiResponse>>>,
     Arc<Notify>,
 );
 
@@ -29,31 +29,32 @@ impl Plugin {
     pub fn new(command: PathBuf) -> Self {
         Self {
             command,
-            request_queue: Default::default(),
+            requests: Default::default(),
             request_notify: Default::default(),
-            response_queue: Default::default(),
+            responses: Default::default(),
             response_notify: Default::default(),
         }
     }
 
     pub fn get(&self) -> Arcs {
         (
-            self.request_queue.clone(),
+            self.requests.clone(),
             self.request_notify.clone(),
-            self.response_queue.clone(),
+            self.responses.clone(),
             self.response_notify.clone(),
         )
     }
 
     async fn process_response(
         stdin: &mut ChildStdin,
-        queue: &Arc<Mutex<Vec<Option<CuprumApiResponse>>>>,
+        queue: &Arc<Mutex<Vec<CuprumApiResponse>>>,
         notify: &Arc<Notify>,
     ) -> anyhow::Result<()> {
         notify.notified().await;
         let queue = queue.lock().await;
         for response in queue.clone() {
             let response = serde_json::to_string(&response)?;
+            log::debug!("Response: {:?}", response);
             stdin.write_all(response.as_bytes()).await?;
             stdin.write_all(b"\n").await?;
             stdin.flush().await?;
@@ -75,6 +76,7 @@ impl Plugin {
 
         let request = serde_json::from_str(&request)?;
         let mut queue = queue.lock().await;
+        log::debug!("Request: {:?}", request);
         queue.push(request);
         notify.notify_one();
 
@@ -90,7 +92,7 @@ impl Plugin {
 
         let mut stdin = child.stdin.take().ok_or(anyhow!("Failed to get stdin"))?;
 
-        let response_queue = self.response_queue.clone();
+        let response_queue = self.responses.clone();
         let response_notify = self.response_notify.clone();
         let response_task = tokio::spawn(async move {
             loop {
@@ -106,7 +108,7 @@ impl Plugin {
 
         let stdout = child.stdout.take().ok_or(anyhow!("Failed to get stdout"))?;
         let mut stdout = BufReader::new(stdout);
-        let queue = self.request_queue.clone();
+        let queue = self.requests.clone();
         let notify = self.request_notify.clone();
         let request_task = tokio::spawn(async move {
             loop {
@@ -120,12 +122,13 @@ impl Plugin {
             }
         });
 
-        let child_process_task = tokio::spawn(async move { child.wait().await });
-
         tokio::select! {
-            _ = response_task => {},
-            _ = request_task => {},
-            _ = child_process_task => {},
+            _ = response_task => {
+                child.kill().await?
+            },
+            _ = request_task => {
+                child.kill().await?
+            },
         }
 
         Ok(())

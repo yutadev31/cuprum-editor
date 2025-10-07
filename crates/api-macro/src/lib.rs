@@ -90,9 +90,9 @@ pub fn define_api(input: TokenStream) -> TokenStream {
         if let Some(method_ret) = method_ret {
             quote! {
                 pub async fn #method_name(&mut self, #( #method_args_with_type ),* ) -> anyhow::Result<#method_ret> {
-                    if let Some(CuprumApiResponse::#method_camel_name(result)) = self
+                    if let Some(CuprumApiResponseKind::#method_camel_name(result)) = self
                         .provider
-                        .send_message(CuprumApiRequest::#method_camel_name( #( #method_args ),* ))
+                        .send_message(CuprumApiRequestKind::#method_camel_name( #( #method_args ),* ))
                         .await?
                     {
                         Ok(result)
@@ -105,7 +105,7 @@ pub fn define_api(input: TokenStream) -> TokenStream {
             quote! {
                 pub async fn #method_name(&mut self, #( #method_args_with_type ),* ) -> anyhow::Result<()> {
                     self.provider
-                        .send_message(CuprumApiRequest::#method_camel_name( #( #method_args ),*))
+                        .send_message(CuprumApiRequestKind::#method_camel_name( #( #method_args ),*))
                         .await?;
                     Ok(())
                 }
@@ -140,22 +140,36 @@ pub fn define_api(input: TokenStream) -> TokenStream {
     let response = methods_enums.filter_map(|method_enums| method_enums.1);
 
     let enum_derive_attr: Attribute = parse_quote!(#[derive(Debug, Clone, Serialize, Deserialize)]);
-    let struct_derive_attr: Attribute = parse_quote!(#[derive(Debug, Default)]);
+    let struct_derive_attr: Attribute =
+        parse_quote!(#[derive(Debug, Clone, Serialize, Deserialize)]);
+    let api_struct_derive_attr: Attribute = parse_quote!(#[derive(Debug, Default)]);
 
     let expanded = quote! {
         #enum_derive_attr
-        pub enum CuprumApiRequest {
+        pub enum CuprumApiRequestKind {
             #( #request ),*
         }
 
+        #struct_derive_attr
+        pub struct CuprumApiRequest {
+            pub id: RequestId,
+            pub kind: CuprumApiRequestKind,
+        }
+
         #enum_derive_attr
-        pub enum CuprumApiResponse {
+        pub enum CuprumApiResponseKind {
             #( #response ),*
         }
 
         #struct_derive_attr
+        pub struct CuprumApiResponse {
+            pub id: RequestId,
+            pub kind: Option<CuprumApiResponseKind>,
+        }
+
+        #api_struct_derive_attr
         pub struct CuprumApi<T: CuprumApiProvider> {
-            provider: T,
+            pub provider: T,
         }
 
         impl<T: CuprumApiProvider> CuprumApi<T> {
