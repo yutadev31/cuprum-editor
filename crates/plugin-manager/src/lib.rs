@@ -54,7 +54,6 @@ impl Plugin {
         let queue = queue.lock().await;
         for response in queue.clone() {
             let response = serde_json::to_string(&response)?;
-            log::debug!("Response: {:?}", response);
             stdin.write_all(response.as_bytes()).await?;
             stdin.write_all(b"\n").await?;
             stdin.flush().await?;
@@ -76,7 +75,6 @@ impl Plugin {
 
         let request = serde_json::from_str(&request)?;
         let mut queue = queue.lock().await;
-        log::debug!("Request: {:?}", request);
         queue.push(request);
         notify.notify_one();
 
@@ -129,6 +127,9 @@ impl Plugin {
             _ = request_task => {
                 child.kill().await?
             },
+            _ = child.wait() => {
+                log::error!("{} finished", self.command.to_string_lossy())
+            }
         }
 
         Ok(())
