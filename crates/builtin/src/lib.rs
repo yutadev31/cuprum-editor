@@ -1,10 +1,14 @@
 use std::sync::Arc;
 
-use api::{ApiRequest, ApiResponse, CuprumApi, CuprumApiProvider, Mode, Position};
+use api::{CuprumApi, CuprumApiProvider, CuprumApiRequest, CuprumApiResponse, Mode, Position};
 use tokio::sync::{Mutex, Notify};
 use utils::vec2::{IVec2, UVec2};
 
-pub type Messages = Vec<(Arc<Notify>, Arc<Mutex<ApiResponse>>, ApiRequest)>;
+pub type Messages = Vec<(
+    Arc<Notify>,
+    Arc<Mutex<Option<CuprumApiResponse>>>,
+    CuprumApiRequest,
+)>;
 
 #[derive(Debug, Default)]
 pub struct BuiltinApiProvider {
@@ -28,9 +32,12 @@ impl BuiltinApiProvider {
 }
 
 impl CuprumApiProvider for BuiltinApiProvider {
-    async fn send_message(&mut self, msg: ApiRequest) -> anyhow::Result<ApiResponse> {
+    async fn send_message(
+        &mut self,
+        msg: CuprumApiRequest,
+    ) -> anyhow::Result<Option<CuprumApiResponse>> {
         let notify = Arc::new(Notify::new());
-        let state = Arc::new(Mutex::new(ApiResponse::None));
+        let state = Arc::new(Mutex::new(None));
         {
             let mut messages = self.messages.lock().await;
             messages.push((notify.clone(), state.clone(), msg));
@@ -77,15 +84,15 @@ impl Builtin {
                 self.api.move_to_y(None, pos).await?;
             }
             BuiltinAction::RemoveChar => {
-                let pos = self.api.get_position(None).await?;
+                let pos = self.api.get_cursor(None).await?;
                 self.api.remove_char(None, pos).await?;
             }
             BuiltinAction::RemoveLine => {
-                let pos = self.api.get_position(None).await?;
+                let pos = self.api.get_cursor(None).await?;
                 self.api.remove_line(None, pos.y).await?;
             }
             BuiltinAction::RemoveSelection => {
-                let cursor = self.api.get_position(None).await?;
+                let cursor = self.api.get_cursor(None).await?;
                 let visual_start = self.api.get_visual_start(None).await?;
 
                 let (left, right, x) = if cursor < visual_start {
@@ -133,13 +140,13 @@ impl Builtin {
                 self.api.change_mode(Mode::Normal).await?;
             }
             BuiltinAction::OpenLineBelow => {
-                let pos = self.api.get_position(None).await?;
+                let pos = self.api.get_cursor(None).await?;
                 self.api.insert_line(None, pos.y + 1, String::new()).await?;
                 self.api.move_by(None, IVec2::down()).await?;
                 self.api.change_mode(Mode::Insert(false)).await?;
             }
             BuiltinAction::OpenLineAbove => {
-                let pos = self.api.get_position(None).await?;
+                let pos = self.api.get_cursor(None).await?;
                 self.api.insert_line(None, pos.y, String::new()).await?;
                 self.api.change_mode(Mode::Insert(false)).await?;
             }

@@ -1,7 +1,7 @@
 [workspace]
 resolver = "3"
 members = [
-  "crates/api",
+  "crates/api", "crates/api-macro",
   "crates/builtin",
   "crates/plugin-manager",
   "crates/utils",
