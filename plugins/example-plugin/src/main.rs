@@ -1,13 +1,9 @@
-use std::time::Duration;
-
-use api::{CuprumApi, DefaultCuprumApiProvider};
-use tokio::time::sleep;
+use api::{CuprumApi, DefaultCuprumApiProvider, Mode};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let mut api = CuprumApi::new(DefaultCuprumApiProvider::new());
-    api.change_mode(api::Mode::Insert(false)).await?;
+    api.change_mode(Mode::Insert(false)).await?;
 
-    sleep(Duration::from_millis(5000)).await;
     Ok(())
 }

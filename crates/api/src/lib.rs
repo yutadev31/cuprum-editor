@@ -203,5 +203,3 @@ impl CuprumApiProvider for DefaultCuprumApiProvider {
         Ok(response.clone())
     }
 }
-
-pub struct CuprumApiManager {}
