@@ -36,10 +36,12 @@ pub struct EditorApiHandler {
 }
 
 impl EditorApiHandler {
+    /// Create a new editor API handler
     pub fn new(state: Arc<Mutex<EditorState>>) -> Self {
         Self { state }
     }
 
+    /// Process a Cuprum API request
     async fn process(&mut self, request: CuprumApiRequestKind) -> Option<CuprumApiResponseKind> {
         let mut state = self.state.lock().await;
 
@@ -297,6 +299,7 @@ pub struct EditorApplication {
 }
 
 impl EditorApplication {
+    /// Create a new editor application
     pub fn new(files: Vec<String>) -> anyhow::Result<Self> {
         Ok(Self {
             state: Arc::new(Mutex::new(EditorState::new(files)?)),
@@ -306,15 +309,18 @@ impl EditorApplication {
         })
     }
 
+    /// Quit the application
     fn quit(&mut self) {
         self.is_quit = true;
     }
 
+    /// Get the quit state
     fn get_quit(&self) -> bool {
         self.is_quit
     }
 
-    async fn on_action(&mut self, action: Action) -> anyhow::Result<()> {
+    /// Run an action
+    async fn run_action(&mut self, action: Action) -> anyhow::Result<()> {
         match action {
             Action::Quit => self.quit(),
             Action::Builtin(action) => {
@@ -325,20 +331,23 @@ impl EditorApplication {
         Ok(())
     }
 
+    /// Process a single terminal when in normal mode
     async fn process_normal(&mut self, evt: Event) -> anyhow::Result<()> {
         if let Some(action) = self.input_manager.read_event_normal(evt)? {
-            self.on_action(action).await?;
+            self.run_action(action).await?;
         }
         Ok(())
     }
 
+    /// Process a single terminal when in visual mode
     async fn process_visual(&mut self, evt: Event) -> anyhow::Result<()> {
         if let Some(action) = self.input_manager.read_event_visual(evt)? {
-            self.on_action(action).await?;
+            self.run_action(action).await?;
         }
         Ok(())
     }
 
+    /// Process a single terminal when in insert mode
     async fn process_insert(&mut self, evt: Event, is_append: bool) -> anyhow::Result<()> {
         if let Some(key_code) = self.input_manager.event_to_key(evt)? {
             let mut state = self.state.lock().await;
@@ -391,7 +400,7 @@ impl EditorApplication {
                         } else if let Some(line_len) = line_len
                             && cursor.y != 0
                         {
-                            // 行頭に戻る
+                            // Go to the beginning of the previous line
                             active_window.move_by(IVec2::new(0, -1)).await;
                             active_window.move_to_x(line_len).await;
                         }
@@ -415,6 +424,7 @@ impl EditorApplication {
         Ok(())
     }
 
+    /// Process a single terminal when in command mode
     async fn process_command(&mut self, evt: Event) -> anyhow::Result<()> {
         if let Some(key_code) = self.input_manager.event_to_key(evt)? {
             let action = {
@@ -423,12 +433,13 @@ impl EditorApplication {
             };
 
             if let Some(action) = action {
-                self.on_action(action).await?;
+                self.run_action(action).await?;
             }
         }
         Ok(())
     }
 
+    /// Process a single terminal event
     async fn process(&mut self, evt: Event) -> anyhow::Result<()> {
         let mode = {
             let state = self.state.lock().await;
@@ -444,18 +455,11 @@ impl EditorApplication {
         }
     }
 
-    async fn run(&mut self, event: Event) {
-        match self.process(event).await {
-            Ok(_) => {}
-            Err(e) => {
-                log::error!("Error: {:?}", e);
-            }
-        }
-    }
-
+    /// Editor Application main entry point
     pub async fn main(files: Vec<String>) -> anyhow::Result<()> {
         let editor = Arc::new(Mutex::new(EditorApplication::new(files)?));
 
+        // Run builtin features
         let (messages, notify, builtin_state, plugin_state) = {
             let editor = editor.lock().await;
             let builtin = editor.builtin.lock().await;
@@ -483,6 +487,7 @@ impl EditorApplication {
             }
         });
 
+        // Run plugin manager
         tokio::spawn(async move {
             let mut plugin_manager = PluginManager::default();
             let result = plugin_manager.init().await.unwrap();
@@ -511,6 +516,7 @@ impl EditorApplication {
             plugin_manager.run().await.unwrap();
         });
 
+        // Render in terminal
         let editor_render = editor.clone();
         let handle_render = tokio::spawn(async move {
             let renderer = Renderer::default();
@@ -539,10 +545,17 @@ impl EditorApplication {
             renderer.clean_screen().ok();
         });
 
+        // Handle terminal events
         loop {
             let event = event::read()?;
             let mut editor = editor.lock().await;
-            editor.run(event).await;
+
+            match editor.process(event).await {
+                Ok(_) => {}
+                Err(e) => {
+                    log::error!("Error: {:?}", e);
+                }
+            }
 
             if editor.is_quit {
                 break;

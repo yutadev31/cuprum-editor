@@ -1,7 +1,8 @@
 use chrono::Local;
 use fern::Dispatch;
 
-pub fn init_logger() -> Result<(), fern::InitError> {
+/// Initialize the logger.
+pub(crate) fn init_logger() -> Result<(), fern::InitError> {
     Dispatch::new()
         .format(|out, message, record| {
             out.finish(format_args!(
