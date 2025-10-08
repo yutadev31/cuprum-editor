@@ -1,7 +1,8 @@
 [workspace]
 resolver = "3"
 members = [
-  "crates/api", "crates/api-macro",
+  "crates/api",
+  "crates/api-macro",
   "crates/builtin",
   "crates/plugin-manager",
   "crates/utils",
@@ -27,8 +28,6 @@ async-trait = "0.1.89"
 home = "0.5.11"
 serde_json = "1.0"
 serde = { version = "1.0.228", features = ["derive"] }
-
-
 api.path = "crates/api"
 builtin.path = "crates/builtin"
 utils.path = "crates/utils"
