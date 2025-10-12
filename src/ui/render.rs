@@ -119,8 +119,8 @@ impl Renderer {
         let (w, h) = terminal::size()?;
         win.set_size(UVec2::new(w.into(), (h - 1).into()));
 
-        let cursor = win.get_render_cursor().await;
-        let visual_start = win.get_visual_start().await;
+        let cursor = win.get_cursor().await;
+        let visual_start = win.get_visual_start();
         let scroll = win.get_scroll();
 
         let visual_cursor = if cursor < visual_start {

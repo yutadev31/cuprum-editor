@@ -4,7 +4,7 @@ use api::{
     CuprumApi, CuprumApiProvider, CuprumApiRequestKind, CuprumApiResponseKind, Mode, Position,
 };
 use tokio::sync::{Mutex, Notify};
-use utils::vec2::{IVec2, UVec2};
+use utils::vec2::IVec2;
 
 pub type Messages = Vec<(
     Arc<Notify>,
@@ -87,68 +87,37 @@ impl Builtin {
             }
             BuiltinAction::RemoveChar => {
                 let pos = self.api.get_cursor(None).await?;
-                self.api.remove_char(None, pos).await?;
+                self.api.remove(None, pos, pos).await?;
             }
             BuiltinAction::RemoveLine => {
-                let pos = self.api.get_cursor(None).await?;
+                let pos = self.api.get_cursor_vec2(None).await?;
                 self.api.remove_line(None, pos.y).await?;
             }
             BuiltinAction::RemoveSelection => {
                 let cursor = self.api.get_cursor(None).await?;
                 let visual_start = self.api.get_visual_start(None).await?;
 
-                let (left, right, x) = if cursor < visual_start {
+                let (left, right, _x) = if cursor < visual_start {
                     (cursor, visual_start, true)
                 } else {
                     (visual_start, cursor, false)
                 };
 
-                let z = if left.y != right.y {
-                    for _ in 0..right.x + 1 {
-                        self.api.remove_char(None, UVec2::new(0, right.y)).await?;
-                    }
+                self.api.remove(None, left, right).await?;
 
-                    let z = right.y - left.y - 1;
-
-                    for _ in left.y + 1..right.y {
-                        self.api.remove_line(None, left.y + 1).await?;
-                    }
-
-                    let line_len = self.api.get_line_length(None, left.y).await?;
-                    for _ in left.x..line_len {
-                        self.api.remove_char(None, UVec2::new(0, left.y)).await?;
-                    }
-
-                    self.api.join_lines(None, left.y).await?;
-
-                    if x { z } else { 0 }
-                } else {
-                    for _ in left.x..right.x {
-                        self.api
-                            .remove_char(None, UVec2::new(left.x, left.y))
-                            .await?;
-                    }
-
-                    0
-                };
-
-                self.api
-                    .move_to_y(None, Position::Number(visual_start.y - z))
-                    .await?;
-                self.api
-                    .move_to_x(None, Position::Number(visual_start.x))
-                    .await?;
+                // TODO _xがtrueの場合、カーソルのY罪表を消した分戻す
+                self.api.move_to(None, visual_start).await?;
 
                 self.api.change_mode(Mode::Normal).await?;
             }
             BuiltinAction::OpenLineBelow => {
-                let pos = self.api.get_cursor(None).await?;
+                let pos = self.api.get_cursor_vec2(None).await?;
                 self.api.insert_line(None, pos.y + 1, String::new()).await?;
                 self.api.move_by(None, IVec2::down()).await?;
                 self.api.change_mode(Mode::Insert(false)).await?;
             }
             BuiltinAction::OpenLineAbove => {
-                let pos = self.api.get_cursor(None).await?;
+                let pos = self.api.get_cursor_vec2(None).await?;
                 self.api.insert_line(None, pos.y, String::new()).await?;
                 self.api.change_mode(Mode::Insert(false)).await?;
             }

@@ -28,6 +28,7 @@ async-trait = "0.1.89"
 home = "0.5.11"
 serde_json = "1.0"
 serde = { version = "1.0.228", features = ["derive"] }
+ropey = "1.6.1"
 api.path = "crates/api"
 builtin.path = "crates/builtin"
 utils.path = "crates/utils"
@@ -53,3 +54,4 @@ builtin.workspace = true
 crossterm.workspace = true
 utils.workspace = true
 plugin-manager.workspace = true
+ropey.workspace = true

@@ -29,10 +29,10 @@ impl Window {
             buffer_id,
             buffer,
             mode,
-            cursor: UVec2::default(),
-            visual_start: UVec2::default(),
-            scroll: 0,
-            position: UVec2::default(),
+            cursor: Default::default(),
+            visual_start: Default::default(),
+            scroll: Default::default(),
+            position: Default::default(),
             size: UVec2::new(term_size.x, term_size.y - 1),
         }
     }
@@ -63,46 +63,46 @@ impl Window {
         self.buffer_id
     }
 
-    #[allow(dead_code)] // TODO
-    pub fn get_cursor(&self) -> UVec2 {
-        self.cursor
-    }
-
-    pub(crate) async fn get_render_cursor(&self) -> UVec2 {
-        if let Some(max_x) = self.get_cursor_max_x().await {
-            if self.cursor.x > max_x {
-                return UVec2::new(max_x, self.cursor.y);
-            } else {
-                return self.cursor;
-            }
+    pub(crate) async fn get_cursor(&self) -> UVec2 {
+        let max_x = self.get_cursor_max_x().await;
+        if self.cursor.x > max_x {
+            return UVec2::new(max_x, self.cursor.y);
+        } else {
+            return self.cursor;
         }
-        self.cursor
     }
 
-    pub async fn get_visual_start(&self) -> UVec2 {
+    pub async fn get_cursor_usize(&self) -> usize {
+        let cursor = self.get_cursor().await;
+        let buffer = self.buffer.lock().await;
+        buffer.vec2_to_index(cursor)
+    }
+
+    pub fn get_visual_start(&self) -> UVec2 {
         self.visual_start
     }
 
-    pub async fn start_visual(&mut self) {
-        if let Some(max_x) = self.get_cursor_max_x().await {
-            if self.cursor.x > max_x {
-                self.visual_start = UVec2::new(max_x, self.cursor.y);
-            } else {
-                self.visual_start = self.cursor;
-            }
-        };
+    pub async fn get_visual_start_usize(&self) -> usize {
+        let buffer = self.buffer.lock().await;
+        buffer.vec2_to_index(self.visual_start)
     }
 
-    pub async fn get_cursor_max_x(&self) -> Option<usize> {
-        let buffer = self.buffer.lock().await;
-        if let Some(line_len) = buffer.get_line_length(self.cursor.y) {
-            Some(if let Mode::Insert(_) = self.mode.lock().await.clone() {
-                line_len
-            } else {
-                line_len.checked_sub(1).unwrap_or(line_len)
-            })
+    pub async fn start_visual(&mut self) {
+        let max_x = self.get_cursor_max_x().await;
+        if self.cursor.x > max_x {
+            self.visual_start = UVec2::new(max_x, self.cursor.y);
         } else {
-            None
+            self.visual_start = self.cursor;
+        }
+    }
+
+    pub async fn get_cursor_max_x(&self) -> usize {
+        let buffer = self.buffer.lock().await;
+        let line_len = buffer.get_line_length(self.cursor.y);
+        if let Mode::Insert(_) = self.mode.lock().await.clone() {
+            line_len
+        } else {
+            line_len.checked_sub(1).unwrap_or(line_len)
         }
     }
 
@@ -112,10 +112,8 @@ impl Window {
 
     pub async fn move_by(&mut self, offset: IVec2) {
         {
-            if let Some(max_x) = self.get_cursor_max_x().await
-                && offset.x != 0
-                && self.cursor.x > max_x
-            {
+            let max_x = self.get_cursor_max_x().await;
+            if offset.x != 0 && self.cursor.x > max_x {
                 self.cursor.x = max_x;
             }
         }
@@ -134,6 +132,11 @@ impl Window {
         }
     }
 
+    pub async fn move_to(&mut self, position: usize) {
+        let buffer = self.buffer.lock().await;
+        self.cursor = buffer.index_to_vec2(position);
+    }
+
     pub async fn move_to_x(&mut self, x: usize) {
         {
             let buffer = self.buffer.lock().await;
@@ -143,13 +146,13 @@ impl Window {
             }
         }
 
-        if let Some(max_x) = self.get_cursor_max_x().await {
-            if x > max_x {
-                self.cursor.x = max_x;
-            } else {
-                self.cursor.x = x;
-            }
+        let max_x = self.get_cursor_max_x().await;
+        if x > max_x {
+            self.cursor.x = max_x;
+        } else {
+            self.cursor.x = x;
         }
+
         self.sync_scroll();
     }
 
@@ -163,10 +166,9 @@ impl Window {
 
             self.cursor.y = y;
 
-            if let Some(line) = buffer.get_line(self.cursor.y)
-                && self.cursor.x > line.len()
-            {
-                self.cursor.x = line.len();
+            let max_x = self.get_cursor_max_x().await;
+            if self.cursor.x > max_x {
+                self.cursor.x = max_x;
             }
         }
         self.sync_scroll();
@@ -199,12 +201,11 @@ impl Window {
         {
             let buffer = self.buffer.lock().await;
             let line_count = buffer.get_line_count();
-            if line_count > 0
-                && let Some(line) = buffer.get_line(line_count - 1)
-            {
-                self.cursor = UVec2::new(line.len(), line_count - 1);
+            if line_count > 0 {
+                self.cursor.y = line_count - 1;
             }
         }
+
         self.sync_scroll();
     }
 

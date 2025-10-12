@@ -60,23 +60,22 @@ define_api!(
     fn save_buffer(buf: Option<BufferId>, path: Option<String>)
     fn get_line_count(buf: Option<BufferId>) -> usize
     fn get_line_length(buf: Option<BufferId>, y: usize) -> usize
-    fn get_char(buf: Option<BufferId>, pos: UVec2) -> char
-    fn get_line(buf: Option<BufferId>, y: usize) -> String
-    fn get_all_lines(buf: Option<BufferId>) -> Vec<String>
+    // fn get_char(buf: Option<BufferId>, pos: UVec2) -> char
+    // fn get_line(buf: Option<BufferId>, y: usize) -> String
+    // fn get_all_lines(buf: Option<BufferId>) -> Vec<String>
     fn get_content(buf: Option<BufferId>) -> String
-    fn insert_char(buf: Option<BufferId>, pos: UVec2, ch: char)
+    fn insert(buf: Option<BufferId>, pos: usize, text: String)
+    fn insert_char(buf: Option<BufferId>, pos: usize, ch: char)
     fn insert_line(buf: Option<BufferId>, y: usize, line: String)
-    fn replace_char(buf: Option<BufferId>, pos: UVec2, ch: char) -> char
-    fn replace_line(buf: Option<BufferId>, y: usize, line: String) -> String
-    fn replace_all_lines(buf: Option<BufferId>, lines: Vec<String>) -> Vec<String>
-    fn replace_content(buf: Option<BufferId>, content: String) -> String
-    fn remove_char(buf: Option<BufferId>, pos: UVec2) -> char
+    fn remove(buf: Option<BufferId>, start: usize, end: usize) -> String
+    fn remove_char(buf: Option<BufferId>, pos: usize) -> char
     fn remove_line(buf: Option<BufferId>, y: usize) -> String
-    fn split_line(buf: Option<BufferId>, pos: UVec2)
-    fn join_lines(buf: Option<BufferId>, y: usize)
-    fn get_cursor(win: Option<WindowId>) -> UVec2
-    fn get_visual_start(win: Option<WindowId>) -> UVec2
+    fn get_cursor(win: Option<WindowId>) -> usize
+    fn get_cursor_vec2(win: Option<WindowId>) -> UVec2
+    fn get_visual_start(win: Option<WindowId>) -> usize
+    fn get_visual_start_vec2(win: Option<WindowId>) -> UVec2
     fn move_by(win: Option<WindowId>, offset: IVec2)
+    fn move_to(win: Option<WindowId>, pos: usize)
     fn move_to_x(win: Option<WindowId>, pos: Position)
     fn move_to_y(win: Option<WindowId>, pos: Position)
 );
