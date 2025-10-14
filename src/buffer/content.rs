@@ -44,6 +44,14 @@ impl BufferContent {
         self.buf.line(line).len_chars()
     }
 
+    pub fn get_char(&self, position: usize) -> char {
+        self.buf.char(position)
+    }
+
+    pub fn get_line(&self, line: usize) -> String {
+        self.buf.line(line).to_string()
+    }
+
     pub fn insert(&mut self, position: usize, text: &str) {
         self.buf.insert(position, text);
     }

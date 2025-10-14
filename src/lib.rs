@@ -105,6 +105,24 @@ impl EditorApiHandler {
 
                 None
             }
+            CuprumApiRequestKind::GetChar(buf, position) => {
+                if let Some(buf) = get_buffer(state, buf).await {
+                    let buf = buf.lock().await;
+                    let ch = buf.get_char(position);
+                    return Some(CuprumApiResponseKind::GetChar(ch));
+                }
+
+                None
+            }
+            CuprumApiRequestKind::GetLine(buf, line) => {
+                if let Some(buf) = get_buffer(state, buf).await {
+                    let buf = buf.lock().await;
+                    let ch = buf.get_line(line);
+                    return Some(CuprumApiResponseKind::GetLine(ch));
+                }
+
+                None
+            }
             CuprumApiRequestKind::GetContent(buf) => {
                 if let Some(buf) = get_buffer(state, buf).await {
                     let buf = buf.lock().await;

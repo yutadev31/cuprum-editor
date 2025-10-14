@@ -60,9 +60,8 @@ define_api!(
     fn save_buffer(buf: Option<BufferId>, path: Option<String>)
     fn get_line_count(buf: Option<BufferId>) -> usize
     fn get_line_length(buf: Option<BufferId>, y: usize) -> usize
-    // fn get_char(buf: Option<BufferId>, pos: UVec2) -> char
-    // fn get_line(buf: Option<BufferId>, y: usize) -> String
-    // fn get_all_lines(buf: Option<BufferId>) -> Vec<String>
+    fn get_char(buf: Option<BufferId>, pos: usize) -> char
+    fn get_line(buf: Option<BufferId>, y: usize) -> String
     fn get_content(buf: Option<BufferId>) -> String
     fn insert(buf: Option<BufferId>, pos: usize, text: String)
     fn insert_char(buf: Option<BufferId>, pos: usize, ch: char)

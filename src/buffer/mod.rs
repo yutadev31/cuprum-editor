@@ -60,6 +60,10 @@ impl Buffer {
         self.content.get_line_length(line)
     }
 
+    pub fn get_char(&self, position: usize) -> char {
+        self.content.get_char(position)
+    }
+
     pub fn get_all_lines(&self) -> Vec<String> {
         self.content
             .get()
@@ -70,6 +74,10 @@ impl Buffer {
 
     pub fn get_content(&self) -> String {
         self.content.get()
+    }
+
+    pub fn get_line(&self, line: usize) -> String {
+        self.content.get_line(line)
     }
 
     pub fn insert(&mut self, position: usize, text: &str) {
